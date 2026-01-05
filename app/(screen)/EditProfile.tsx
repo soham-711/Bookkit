@@ -42,8 +42,6 @@
 // const clamp = (n: number, min: number, max: number) =>
 //   Math.max(min, Math.min(max, n));
 
-
-
 // const ProfileScreen: React.FC = () => {
 //   const { width, height } = useWindowDimensions();
 //   const styles = useMemo(() => makeStyles(width, height), [width, height]);
@@ -110,8 +108,6 @@
 //     setTimeout(() => inputRefs.current[field]?.focus(), 0);
 //   };
 
-
-
 //   const stopEditing = () => {
 //     if (editingField === "email") {
 //       setProfileData((p) => ({ ...p, email: pendingEmail }));
@@ -166,32 +162,32 @@
 // ): Promise<string | null> => {
 //   try {
 //     console.log("🔄 Uploading avatar...");
-    
+
 //     // Check if supabase is initialized
 //     if (!supabase) {
 //       console.error("❌ Supabase not initialized");
 //       return null;
 //     }
-    
+
 //     // Read the image file
 //     const base64 = await FileSystem.readAsStringAsync(imageUri, {
 //       encoding: FileSystem.EncodingType.Base64,
 //     });
-    
+
 //     // Convert to Uint8Array (Buffer might not work in React Native)
 //     const binaryString = atob(base64);
 //     const bytes = new Uint8Array(binaryString.length);
 //     for (let i = 0; i < binaryString.length; i++) {
 //       bytes[i] = binaryString.charCodeAt(i);
 //     }
-    
+
 //     // Use unique filename
 //     const filePath = `${userId}/avatar_${Date.now()}.jpg`;
-    
+
 //     console.log("📤 Uploading to:", filePath);
-    
+
 //     // Try upload with different approaches
-    
+
 //     // Approach 1: Use ArrayBuffer
 //     const { data, error } = await supabase.storage
 //       .from("avatars")
@@ -199,44 +195,43 @@
 //         contentType: "image/jpeg",
 //         upsert: true,
 //       });
-    
+
 //     if (error) {
 //       console.log("❌ ArrayBuffer failed, trying blob...");
-      
+
 //       // Approach 2: Use Blob
 //       const blob = new Blob([bytes], { type: 'image/jpeg' });
-      
+
 //       const { data: data2, error: error2 } = await supabase.storage
 //         .from("avatars")
 //         .upload(filePath, blob, {
 //           contentType: "image/jpeg",
 //           upsert: true,
 //         });
-      
+
 //       if (error2) {
 //         console.error("❌ All upload methods failed:", error2);
 //         return null;
 //       }
-      
+
 //       console.log("✅ Upload successful via blob");
 //     } else {
 //       console.log("✅ Upload successful via ArrayBuffer");
 //     }
-    
+
 //     // Get public URL
 //     const { data: urlData } = supabase.storage
 //       .from("avatars")
 //       .getPublicUrl(filePath);
-    
+
 //     console.log("🔗 Public URL:", urlData.publicUrl);
 //     return urlData.publicUrl;
-    
+
 //   } catch (error) {
 //     console.error("💥 Upload failed completely:", error);
 //     return null;
 //   }
 // };
-
 
 //   const takePhoto = async () => {
 //     setShowImagePickerModal(false);
@@ -255,7 +250,7 @@
 //       setIsDirty(true);
 //     }
 //     console.log(result);
-    
+
 //   };
 
 //   const pickFromGallery = async () => {
@@ -279,8 +274,7 @@
 //       }
 
 //     }
-  
-    
+
 //   };
 
 //   const isValidEmail = (email: string) =>
@@ -1302,10 +1296,6 @@
 
 // export default ProfileScreen;
 
-
-
-
-
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
@@ -1331,6 +1321,8 @@ import {
 
 import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../../Utils/supabase";
+
+import { useProfileStore } from "../../Context/ProfileContext";
 
 interface ProfileData {
   name: string;
@@ -1398,6 +1390,8 @@ const ProfileScreen: React.FC = () => {
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
 
   const inputRefs = useRef<Record<string, TextInput | null>>({});
+
+  const { refreshProfileSilently } = useProfileStore();
 
   const handleChange = (field: keyof ProfileData) => {
     if (field === "mobile") {
@@ -1471,30 +1465,30 @@ const ProfileScreen: React.FC = () => {
   ): Promise<string | null> => {
     try {
       console.log("🔄 Uploading avatar...");
-      
+
       // Check if supabase is initialized
       if (!supabase) {
         console.error("❌ Supabase not initialized");
         return null;
       }
-      
+
       // Read the image file
       const base64 = await FileSystem.readAsStringAsync(imageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      
+
       // Convert to Uint8Array
       const binaryString = atob(base64);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      
+
       // Use unique filename
       const filePath = `${userId}/avatar_${Date.now()}.jpg`;
-      
+
       console.log("📤 Uploading to:", filePath);
-      
+
       // Try upload with ArrayBuffer
       const { data, error } = await supabase.storage
         .from("avatars")
@@ -1502,182 +1496,181 @@ const ProfileScreen: React.FC = () => {
           contentType: "image/jpeg",
           upsert: true,
         });
-      
+
       if (error) {
         console.log("❌ ArrayBuffer failed, trying blob...");
-        
+
         // Try with Blob
-        const blob = new Blob([bytes], { type: 'image/jpeg' });
-        
+        const blob = new Blob([bytes], { type: "image/jpeg" });
+
         const { data: data2, error: error2 } = await supabase.storage
           .from("avatars")
           .upload(filePath, blob, {
             contentType: "image/jpeg",
             upsert: true,
           });
-        
+
         if (error2) {
           console.error("❌ All upload methods failed:", error2);
           return null;
         }
-        
+
         console.log("✅ Upload successful via blob");
       } else {
         console.log("✅ Upload successful via ArrayBuffer");
       }
-      
+
       // Get public URL
       const { data: urlData } = supabase.storage
         .from("avatars")
         .getPublicUrl(filePath);
-      
+
       console.log("🔗 Public URL:", urlData.publicUrl);
       return urlData.publicUrl;
-      
     } catch (error) {
       console.error("💥 Upload failed completely:", error);
       return null;
     }
   };
 
-// const uploadAvatarToSupabase = async (
-//   imageUri: string,
-//   userId: string
-// ): Promise<string | null> => {
-//   try {
-//     console.log("🔄 Uploading avatar...");
-    
-//     if (!supabase) {
-//       console.error("❌ Supabase not initialized");
-//       return null;
-//     }
-    
-//     // Step 1: First upload the new avatar
-//     console.log("📤 Uploading new avatar...");
-    
-//     // Read the image file
-//     const base64 = await FileSystem.readAsStringAsync(imageUri, {
-//       encoding: FileSystem.EncodingType.Base64,
-//     });
-    
-//     // Convert to Uint8Array
-//     const binaryString = atob(base64);
-//     const bytes = new Uint8Array(binaryString.length);
-//     for (let i = 0; i < binaryString.length; i++) {
-//       bytes[i] = binaryString.charCodeAt(i);
-//     }
-    
-//     // Create new filename with timestamp (we'll rename later)
-//     const timestamp = Date.now();
-//     const tempFilePath = `${userId}/avatar_new_${timestamp}.jpg`;
-//     const finalFilePath = `${userId}/avatar.jpg`;
-    
-//     console.log("📤 Uploading temp file to:", tempFilePath);
-    
-//     // Upload as temp file first
-//     const { data, error } = await supabase.storage
-//       .from("avatars")
-//       .upload(tempFilePath, bytes.buffer, {
-//         contentType: "image/jpeg",
-//         upsert: false, // Don't overwrite, this should be a new file
-//       });
-    
-//     if (error) {
-//       console.log("❌ ArrayBuffer failed, trying blob...");
-      
-//       const blob = new Blob([bytes], { type: 'image/jpeg' });
-      
-//       const { data: data2, error: error2 } = await supabase.storage
-//         .from("avatars")
-//         .upload(tempFilePath, blob, {
-//           contentType: "image/jpeg",
-//           upsert: false,
-//         });
-      
-//       if (error2) {
-//         console.error("❌ All upload methods failed:", error2);
-//         return null;
-//       }
-      
-//       console.log("✅ Temp upload successful via blob");
-//     } else {
-//       console.log("✅ Temp upload successful via ArrayBuffer");
-//     }
-    
-//     // Step 2: Delete all old avatars (except the new temp one)
-//     try {
-//       console.log("🗑️ Cleaning up old avatars...");
-      
-//       const { data: oldFiles, error: listError } = await supabase.storage
-//         .from("avatars")
-//         .list(userId);
-      
-//       if (!listError && oldFiles) {
-//         // Filter out the temp file we just uploaded
-//         const filesToDelete = oldFiles
-//           .filter(file => file.name !== `avatar_new_${timestamp}.jpg`)
-//           .map(file => `${userId}/${file.name}`);
-        
-//         if (filesToDelete.length > 0) {
-//           console.log("🗑️ Deleting old files:", filesToDelete);
-          
-//           const { error: deleteError } = await supabase.storage
-//             .from("avatars")
-//             .remove(filesToDelete);
-          
-//           if (deleteError) {
-//             console.error("⚠️ Error deleting old files:", deleteError);
-//           } else {
-//             console.log("✅ Successfully deleted old avatars");
-//           }
-//         }
-//       }
-//     } catch (cleanupError) {
-//       console.error("⚠️ Error during cleanup:", cleanupError);
-//     }
-    
-//     // Step 3: Rename temp file to final name (avatar.jpg)
-//     try {
-//       console.log("🔄 Renaming temp file to avatar.jpg...");
-      
-//       // Copy temp file to final location
-//       const { error: copyError } = await supabase.storage
-//         .from("avatars")
-//         .copy(tempFilePath, finalFilePath);
-      
-//       if (copyError) {
-//         console.error("❌ Error copying file:", copyError);
-//         // If copy fails, use temp file URL
-//         const { data: tempUrlData } = supabase.storage
-//           .from("avatars")
-//           .getPublicUrl(tempFilePath);
-//         return tempUrlData.publicUrl;
-//       }
-      
-//       // Delete the temp file
-//       await supabase.storage
-//         .from("avatars")
-//         .remove([tempFilePath]);
-      
-//       console.log("✅ File renamed successfully");
-      
-//     } catch (renameError) {
-//       console.error("⚠️ Error renaming file:", renameError);
-//     }
-    
-//     // Get public URL for the final file
-//     const { data: urlData } = supabase.storage
-//       .from("avatars")
-//       .getPublicUrl(finalFilePath);
-    
-//     console.log("🔗 Final public URL:", urlData.publicUrl);
-//     return urlData.publicUrl;
-    
-//   } catch (error) {
-//     console.error("💥 Upload failed completely:", error);
-//     return null;
-//   }
-// };
+  // const uploadAvatarToSupabase = async (
+  //   imageUri: string,
+  //   userId: string
+  // ): Promise<string | null> => {
+  //   try {
+  //     console.log("🔄 Uploading avatar...");
+
+  //     if (!supabase) {
+  //       console.error("❌ Supabase not initialized");
+  //       return null;
+  //     }
+
+  //     // Step 1: First upload the new avatar
+  //     console.log("📤 Uploading new avatar...");
+
+  //     // Read the image file
+  //     const base64 = await FileSystem.readAsStringAsync(imageUri, {
+  //       encoding: FileSystem.EncodingType.Base64,
+  //     });
+
+  //     // Convert to Uint8Array
+  //     const binaryString = atob(base64);
+  //     const bytes = new Uint8Array(binaryString.length);
+  //     for (let i = 0; i < binaryString.length; i++) {
+  //       bytes[i] = binaryString.charCodeAt(i);
+  //     }
+
+  //     // Create new filename with timestamp (we'll rename later)
+  //     const timestamp = Date.now();
+  //     const tempFilePath = `${userId}/avatar_new_${timestamp}.jpg`;
+  //     const finalFilePath = `${userId}/avatar.jpg`;
+
+  //     console.log("📤 Uploading temp file to:", tempFilePath);
+
+  //     // Upload as temp file first
+  //     const { data, error } = await supabase.storage
+  //       .from("avatars")
+  //       .upload(tempFilePath, bytes.buffer, {
+  //         contentType: "image/jpeg",
+  //         upsert: false, // Don't overwrite, this should be a new file
+  //       });
+
+  //     if (error) {
+  //       console.log("❌ ArrayBuffer failed, trying blob...");
+
+  //       const blob = new Blob([bytes], { type: 'image/jpeg' });
+
+  //       const { data: data2, error: error2 } = await supabase.storage
+  //         .from("avatars")
+  //         .upload(tempFilePath, blob, {
+  //           contentType: "image/jpeg",
+  //           upsert: false,
+  //         });
+
+  //       if (error2) {
+  //         console.error("❌ All upload methods failed:", error2);
+  //         return null;
+  //       }
+
+  //       console.log("✅ Temp upload successful via blob");
+  //     } else {
+  //       console.log("✅ Temp upload successful via ArrayBuffer");
+  //     }
+
+  //     // Step 2: Delete all old avatars (except the new temp one)
+  //     try {
+  //       console.log("🗑️ Cleaning up old avatars...");
+
+  //       const { data: oldFiles, error: listError } = await supabase.storage
+  //         .from("avatars")
+  //         .list(userId);
+
+  //       if (!listError && oldFiles) {
+  //         // Filter out the temp file we just uploaded
+  //         const filesToDelete = oldFiles
+  //           .filter(file => file.name !== `avatar_new_${timestamp}.jpg`)
+  //           .map(file => `${userId}/${file.name}`);
+
+  //         if (filesToDelete.length > 0) {
+  //           console.log("🗑️ Deleting old files:", filesToDelete);
+
+  //           const { error: deleteError } = await supabase.storage
+  //             .from("avatars")
+  //             .remove(filesToDelete);
+
+  //           if (deleteError) {
+  //             console.error("⚠️ Error deleting old files:", deleteError);
+  //           } else {
+  //             console.log("✅ Successfully deleted old avatars");
+  //           }
+  //         }
+  //       }
+  //     } catch (cleanupError) {
+  //       console.error("⚠️ Error during cleanup:", cleanupError);
+  //     }
+
+  //     // Step 3: Rename temp file to final name (avatar.jpg)
+  //     try {
+  //       console.log("🔄 Renaming temp file to avatar.jpg...");
+
+  //       // Copy temp file to final location
+  //       const { error: copyError } = await supabase.storage
+  //         .from("avatars")
+  //         .copy(tempFilePath, finalFilePath);
+
+  //       if (copyError) {
+  //         console.error("❌ Error copying file:", copyError);
+  //         // If copy fails, use temp file URL
+  //         const { data: tempUrlData } = supabase.storage
+  //           .from("avatars")
+  //           .getPublicUrl(tempFilePath);
+  //         return tempUrlData.publicUrl;
+  //       }
+
+  //       // Delete the temp file
+  //       await supabase.storage
+  //         .from("avatars")
+  //         .remove([tempFilePath]);
+
+  //       console.log("✅ File renamed successfully");
+
+  //     } catch (renameError) {
+  //       console.error("⚠️ Error renaming file:", renameError);
+  //     }
+
+  //     // Get public URL for the final file
+  //     const { data: urlData } = supabase.storage
+  //       .from("avatars")
+  //       .getPublicUrl(finalFilePath);
+
+  //     console.log("🔗 Final public URL:", urlData.publicUrl);
+  //     return urlData.publicUrl;
+
+  //   } catch (error) {
+  //     console.error("💥 Upload failed completely:", error);
+  //     return null;
+  //   }
+  // };
 
   const takePhoto = async () => {
     setShowImagePickerModal(false);
@@ -1761,7 +1754,7 @@ const ProfileScreen: React.FC = () => {
   //         avatarToUpload.uri,
   //         userId
   //       );
-        
+
   //       if (uploadedUrl) {
   //         finalAvatarUrl = uploadedUrl;
   //         console.log("✅ Avatar URL updated:", finalAvatarUrl);
@@ -1810,7 +1803,7 @@ const ProfileScreen: React.FC = () => {
   //     setEditingField(null);
 
   //     Alert.alert("Success", "Profile updated successfully!");
-      
+
   //   } catch (err: any) {
   //     console.error("Update error:", err);
   //     Alert.alert("Error", err.message || "Failed to update profile");
@@ -1820,131 +1813,135 @@ const ProfileScreen: React.FC = () => {
   // };
 
   const updateProfile = async () => {
-  if (!userId) {
-    Alert.alert("Error", "User not found");
-    return;
-  }
-
-  if (!isValidEmail(pendingEmail)) {
-    Alert.alert("Invalid Email", "Please enter a valid email address");
-    return;
-  }
-
-  try {
-    setSaving(true);
-    let finalAvatarUrl = avatarRemoteUrl;
-
-    // Upload avatar only if a new image was selected
-    if (avatarToUpload && avatarToUpload.uri) {
-      console.log("📸 Uploading new avatar...");
-      const uploadedUrl = await uploadAvatarToSupabase(
-        avatarToUpload.uri,
-        userId
-      );
-      
-      if (uploadedUrl) {
-        finalAvatarUrl = uploadedUrl;
-        console.log("✅ Avatar URL updated:", finalAvatarUrl);
-      } else {
-        // If upload fails, keep the old avatar URL
-        console.log("⚠️ Avatar upload failed, keeping previous image");
-      }
-    }
-
-    // Format DOB for database
-    const formattedDOB = formatDOBForDB(profileData.dob);
-    
-    // Validate DOB before sending to database
-    if (formattedDOB === null && profileData.dob) {
-      console.error("Invalid DOB format:", profileData.dob);
-      Alert.alert(
-        "Invalid Date of Birth", 
-        "Please reset your DOB again. Use format DD/MM/YYYY"
-      );
-      setSaving(false);
+    if (!userId) {
+      Alert.alert("Error", "User not found");
       return;
     }
 
-    // Prepare update data
-    const updateData: any = {
-      full_name: profileData.name.trim(),
-      email: pendingEmail.trim(),
-      avatar_url: finalAvatarUrl,
-      updated_at: new Date().toISOString(),
-    };
-
-    // Only add date_of_birth if it's valid and not null
-    if (formattedDOB !== null) {
-      updateData.date_of_birth = formattedDOB;
+    if (!isValidEmail(pendingEmail)) {
+      Alert.alert("Invalid Email", "Please enter a valid email address");
+      return;
     }
 
-    console.log("Updating profile with data:", updateData);
+    try {
+      setSaving(true);
+      let finalAvatarUrl = avatarRemoteUrl;
 
-    // Update profile in Supabase database
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update(updateData)
-      .eq("user_id", userId);
+      // Upload avatar only if a new image was selected
+      if (avatarToUpload && avatarToUpload.uri) {
+        console.log("📸 Uploading new avatar...");
+        const uploadedUrl = await uploadAvatarToSupabase(
+          avatarToUpload.uri,
+          userId
+        );
 
-    if (profileError) {
-      console.error("Profile update error:", profileError);
-      
-      // Check if error is related to date format
-      if (profileError.code === '22007' || // PostgreSQL invalid date format error
-          profileError.message.includes('date') || 
-          profileError.message.includes('DOB')) {
+        if (uploadedUrl) {
+          finalAvatarUrl = uploadedUrl;
+
+          console.log("✅ Avatar URL updated:", finalAvatarUrl);
+        } else {
+          // If upload fails, keep the old avatar URL
+          console.log("⚠️ Avatar upload failed, keeping previous image");
+        }
+      }
+
+      // Format DOB for database
+      const formattedDOB = formatDOBForDB(profileData.dob);
+
+      // Validate DOB before sending to database
+      if (formattedDOB === null && profileData.dob) {
+        console.error("Invalid DOB format:", profileData.dob);
+        Alert.alert(
+          "Invalid Date of Birth",
+          "Please reset your DOB again. Use format DD/MM/YYYY"
+        );
+        setSaving(false);
+        return;
+      }
+
+      // Prepare update data
+      const updateData: any = {
+        full_name: profileData.name.trim(),
+        email: pendingEmail.trim(),
+        avatar_url: finalAvatarUrl,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Only add date_of_birth if it's valid and not null
+      if (formattedDOB !== null) {
+        updateData.date_of_birth = formattedDOB;
+      }
+
+      console.log("Updating profile with data:", updateData);
+
+      // Update profile in Supabase database
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update(updateData)
+        .eq("user_id", userId);
+
+      if (profileError) {
+        console.error("Profile update error:", profileError);
+
+        // Check if error is related to date format
+        if (
+          profileError.code === "22007" || // PostgreSQL invalid date format error
+          profileError.message.includes("date") ||
+          profileError.message.includes("DOB")
+        ) {
+          Alert.alert(
+            "Date of Birth Error",
+            "Please reset your DOB again. Use format DD/MM/YYYY"
+          );
+        } else {
+          throw profileError;
+        }
+        return;
+      }
+
+      // Update default address if needed
+      const selected = addresses.find((a) => a.isDefault);
+      if (selected) {
+        await supabase
+          .from("addresses")
+          .update({ is_default: false })
+          .eq("user_id", userId);
+
+        await supabase
+          .from("addresses")
+          .update({ is_default: true })
+          .eq("id", selected.id);
+      }
+
+      // Update local state
+      setAvatarRemoteUrl(finalAvatarUrl);
+      setAvatarLocalUri(null);
+      setAvatarToUpload(null);
+      setIsDirty(false);
+      setEditingField(null);
+      await refreshProfileSilently();
+      Alert.alert("Success", "Profile updated successfully!");
+    } catch (err: any) {
+      console.error("Update error:", err);
+
+      // Check if error is date-related
+      if (
+        err.code === "22007" ||
+        err.message?.includes("date") ||
+        err.message?.includes("DOB") ||
+        err.message?.includes("invalid input syntax")
+      ) {
         Alert.alert(
           "Date of Birth Error",
           "Please reset your DOB again. Use format DD/MM/YYYY"
         );
       } else {
-        throw profileError;
+        Alert.alert("Error", err.message || "Failed to update profile");
       }
-      return;
+    } finally {
+      setSaving(false);
     }
-
-    // Update default address if needed
-    const selected = addresses.find((a) => a.isDefault);
-    if (selected) {
-      await supabase
-        .from("addresses")
-        .update({ is_default: false })
-        .eq("user_id", userId);
-
-      await supabase
-        .from("addresses")
-        .update({ is_default: true })
-        .eq("id", selected.id);
-    }
-
-    // Update local state
-    setAvatarRemoteUrl(finalAvatarUrl);
-    setAvatarLocalUri(null);
-    setAvatarToUpload(null);
-    setIsDirty(false);
-    setEditingField(null);
-
-    Alert.alert("Success", "Profile updated successfully!");
-    
-  } catch (err: any) {
-    console.error("Update error:", err);
-    
-    // Check if error is date-related
-    if (err.code === '22007' || 
-        err.message?.includes('date') || 
-        err.message?.includes('DOB') ||
-        err.message?.includes('invalid input syntax')) {
-      Alert.alert(
-        "Date of Birth Error",
-        "Please reset your DOB again. Use format DD/MM/YYYY"
-      );
-    } else {
-      Alert.alert("Error", err.message || "Failed to update profile");
-    }
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   const isEditing = useMemo(() => editingField !== null, [editingField]);
 
@@ -1976,12 +1973,12 @@ const ProfileScreen: React.FC = () => {
 
         if (profile) {
           // Add timestamp to prevent caching
-          const avatarUrl = profile.avatar_url 
+          const avatarUrl = profile.avatar_url
             ? `${profile.avatar_url}?t=${Date.now()}`
             : null;
-          
+
           setAvatarRemoteUrl(avatarUrl);
-          
+
           setProfileData({
             name: profile.full_name || "",
             mobile: user.phone || "",
@@ -2013,7 +2010,10 @@ const ProfileScreen: React.FC = () => {
 
           const defaultAddr = addr.find((a) => a.is_default);
           if (defaultAddr) {
-            setProfileData((p) => ({ ...p, address: defaultAddr.full_address }));
+            setProfileData((p) => ({
+              ...p,
+              address: defaultAddr.full_address,
+            }));
           }
         }
       } catch (error: any) {
@@ -2047,7 +2047,7 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.push('/(screen)/Profile')}
+            onPress={() => router.push("/(screen)/Profile")}
           >
             <Ionicons name="arrow-back" size={22} color="black" />
             <Text style={styles.headerText}>Your profile</Text>

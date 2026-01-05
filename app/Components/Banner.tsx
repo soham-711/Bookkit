@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
 
     paddingBottom: 17,
     borderBottomWidth: 1,
-    borderBottomColor: "#7FC1C5",
+    borderBottomColor: "#e0e8ecff",
   },
   flatListWrapper: {
     height: 160,

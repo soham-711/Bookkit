@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ArrowLeft,
   ChevronRight,
+  Clock,
   Edit,
   Info,
   LogOut,
@@ -18,6 +19,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -110,15 +112,15 @@ const ProfileScreen = () => {
           <TouchableOpacity
             style={styles.backButton}
             activeOpacity={0.7}
-            onPress={() => router.push("/(screen)/Dashboard")}
+            onPress={() => router.push('/(screen)/Dashboard')}
           >
             <ArrowLeft color="#000" size={scale(24, width)} />
           </TouchableOpacity>
 
           {/* Profile Card with Background Image - Clickable to Edit Profile */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => router.push("/(screen)/EditProfile")}
+          <TouchableWithoutFeedback
+          
+            
           >
             <View style={styles.profileCardWrapper}>
               <LinearGradient
@@ -135,7 +137,7 @@ const ProfileScreen = () => {
                 />
 
                 {/* Profile Header */}
-                <View style={styles.profileHeader}>
+                <TouchableWithoutFeedback style={styles.profileHeader} onPress={() => router.push("/(screen)/EditProfile")}>
                   <View style={styles.profileInfo}>
                     <View style={styles.avatarContainer}>
                       <LinearGradient
@@ -169,11 +171,12 @@ const ProfileScreen = () => {
                       <Text style={styles.editProfile}>Edit profile</Text>
                     </View>
                   </View>
-                </View>
+                </TouchableWithoutFeedback>
+
               </LinearGradient>
 
               {/* Gold Coins Section - Connected to Profile Card */}
-              <View style={styles.coinsCard}>
+              <View style={styles.coinsCard} >
                 <View style={styles.coinsContainer}>
                   <View style={styles.coinsLeft}>
                     <View style={styles.coinIcon}>
@@ -184,6 +187,7 @@ const ProfileScreen = () => {
                   <TouchableOpacity
                     style={styles.savedBadge}
                     activeOpacity={0.7}
+                    onPress={()=>router.push("/(screen)/GoldSection")}
                   >
                     <Text style={styles.savedText}>Saved ₹0</Text>
                     <ChevronRight
@@ -195,7 +199,7 @@ const ProfileScreen = () => {
                 </View>
               </View>
             </View>
-          </TouchableOpacity>
+          </TouchableWithoutFeedback>
 
           {/* Action Buttons */}
           <View style={styles.actionGrid}>
@@ -280,33 +284,45 @@ const ProfileScreen = () => {
             <MenuItem
               icon={<Star color="#fff" size={scale(24, width)} />}
               label="Your rating"
-              badge="⭐ 453"
+              badge="⭐"
               width={width}
+              onPress={()=>router.push('/Components/CommingSoon')}
             />
             <MenuItem
               icon={<ThumbsUp color="#fff" size={scale(24, width)} />}
               label="Your feedback"
               width={width}
+              onPress={()=>router.push('/Components/CommingSoon')}
+            />
+              <MenuItem
+              icon={<Clock color="#fff" size={scale(24, width)} />}
+              label="Sell History"
+              width={width}
+              onPress={()=>router.push('/Components/CommingSoon')}
             />
             <MenuItem
               icon={<Info color="#fff" size={scale(24, width)} />}
               label="About"
               width={width}
+              onPress={()=>router.push('/Components/CommingSoon')}
             />
             <MenuItem
               icon={<Edit color="#fff" size={scale(24, width)} />}
               label="Send feedback"
               width={width}
+              onPress={()=>router.push('/Components/CommingSoon')}
             />
             <MenuItem
               icon={<AlertCircle color="#fff" size={scale(24, width)} />}
               label="Report"
               width={width}
+              onPress={()=>router.push('/Components/CommingSoon')}
             />
             <MenuItem
               icon={<Settings color="#fff" size={scale(24, width)} />}
               label="Settings"
               width={width}
+              onPress={()=>router.push('/Components/CommingSoon')}
             />
             <MenuItem
               icon={<LogOut color="#fff" size={scale(24, width)} />}

@@ -9,6 +9,39 @@ import {
   View,
 } from "react-native";
 
+
+ type Book = {
+  id: string;
+
+  title: string;
+  description: string | null;
+
+  images: string[] | null;
+
+  generated_price: number;
+  original_price: number | null;
+
+  pickup_latitude: number;
+  pickup_longitude: number;
+
+  approval_status: "approved" | "pending" | "rejected";
+  is_active: boolean;
+
+  owner_id: string;
+
+  created_at: string;
+  updated_at: string | null;
+
+  // optional fields if you added them
+  category_id?: string | null;
+  condition?: string | null;
+};
+
+type Props = {
+  books: Book[];
+};
+
+
 // Scaling utilities (defined once, outside component)
 const scale = (size: number, width: number) =>
   (width / 375) * size;
@@ -20,64 +53,8 @@ const moderateScale = (size: number, factor = 0.5, width: number) =>
   size + (scale(size, width) - size) * factor;
 
 // Sample data
-const SUGGESTED_BOOKS = [
-  {
-    id: "s1",
-    name: "NCERT Mathematics Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/lemh1cc.jpg",
-    price: 1200,
-  },
-  {
-    id: "s2",
-    name: "NCERT Chemistry Class XI",
-    image: "https://ncert.nic.in/textbook/pdf/kech1cc.jpg",
-    price: 1899,
-  },
-  {
-    id: "s3",
-    name: "NCERT Science Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jesc1cc.jpg",
-    price: 2899,
-  },
-  {
-    id: "s4",
-    name: "General English Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jehe1cc.jpg",
-    price: 1299,
-  },
-  {
-    id: "s5",
-    name: "Flamingo English Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/lefl1cc.jpg",
-    price: 899,
-  },
-  {
-    id: "s6",
-    name: "Vistas English Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/levt1cc.jpg",
-    price: 899,
-  },
-  {
-    id: "s7",
-    name: "Mathematics Class IX",
-    image: "https://ncert.nic.in/textbook/pdf/iemh1cc.jpg",
-    price: 1200,
-  },
-  {
-    id: "s8",
-    name: "NCERT Mathematics Class XI",
-    image: "https://ncert.nic.in/textbook/pdf/kemh1cc.jpg",
-    price: 1899,
-  },
-  {
-    id: "s9",
-    name: "Allinone Mathematics Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jemh1cc.jpg",
-    price: 2899,
-  },
-];
 
-const SuggestedBooksCart = () => {
+const SuggestedBooksCart: React.FC<Props> = ({ books }) =>{
   const { width, height } = useWindowDimensions();
   const styles = createStyles(width, height);
 
@@ -89,25 +66,25 @@ const SuggestedBooksCart = () => {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Books Suggested For You</Text>
+        <Text style={styles.sectionTitle}>Books Explore More Books</Text>
       </View>
 
       <View style={styles.suggestedGrid}>
-        {SUGGESTED_BOOKS.map((book) => (
+        {books.map((book) => (
           <View key={book.id} style={styles.suggestedCard}>
             <View style={styles.suggestedImageWrapper}>
               <Image
-                source={{ uri: book.image }}
+                source={{ uri: book.images?.[0] }}
                 style={styles.suggestedBookImage}
                 contentFit="cover"
               />
             </View>
 
             <Text style={styles.suggestedBookName} numberOfLines={1}>
-              {book.name}
+              {book.title}
             </Text>
 
-            <Text style={styles.suggestedPriceText}>Now at ₹{book.price}</Text>
+            <Text style={styles.suggestedPriceText}>Now at ₹{book.original_price}</Text>
           </View>
         ))}
       </View>

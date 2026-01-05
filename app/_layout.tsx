@@ -1,81 +1,146 @@
 // import * as NavigationBar from "expo-navigation-bar";
-// import { Stack } from "expo-router";
-// import { StatusBar } from "expo-status-bar";
-// import { useEffect } from "react";
-// import { SafeAreaProvider } from "react-native-safe-area-context";
-
-// export default function RootLayout() {
-//   useEffect(() => {
-//    // NavigationBar.setBackgroundColorAsync("transparent");
-//     NavigationBar.setButtonStyleAsync("dark");
-//   }, []);
-//   return (
-//     <SafeAreaProvider>
-//       <StatusBar translucent backgroundColor="transparent" style="dark" />
-//       <Stack screenOptions={{ headerShown: false }} />
-//     </SafeAreaProvider>
-//   );
-// }
-
-
-
-// import * as NavigationBar from "expo-navigation-bar";
 // import { Stack, router } from "expo-router";
 // import { StatusBar } from "expo-status-bar";
-// import { useEffect } from "react";
+// import { useEffect, useRef, useState } from "react";
+// import { ActivityIndicator, Animated, StyleSheet } from "react-native";
 // import { SafeAreaProvider } from "react-native-safe-area-context";
+// import { LocationProvider } from "../Context/LocationContext";
+// import { ProfileProvider } from "../Context/ProfileContext";
+// import { UploadProvider } from "../Context/UploadContext";
 // import { supabase } from "../Utils/supabase";
 
 // export default function RootLayout() {
+//   const [loading, setLoading] = useState(true);
+//   const fadeAnim = useRef(new Animated.Value(1)).current;
 
 //   /* ===== NAV BAR SETUP ===== */
 //   useEffect(() => {
 //     NavigationBar.setButtonStyleAsync("dark");
-//     // NavigationBar.setBackgroundColorAsync("transparent");
 //   }, []);
 
-//   /* ===== AUTH LISTENER (GLOBAL) ===== */
+//   /* ===== AUTH + PROFILE CHECK ===== */
 //   useEffect(() => {
-//     const { data: listener } = supabase.auth.onAuthStateChange(
-//       (_event, session) => {
-//         if (session) {
-//           // User logged in
-//           router.replace("/(screen)/CredencialForm");
-//         } else {
-//           // User logged out
-//           router.replace("/(auth)/Login");
-//         }
-//       }
-//     );
+//     const run = async () => {
+//       const {
+//         data: { session },
+//       } = await supabase.auth.getSession();
 
-//     return () => {
-//       listener.subscription.unsubscribe();
+//       if (!session) {
+//         router.replace("/(auth)/Login");
+//         finishLoading();
+//         return;
+//       }
+
+//       const userId = session.user.id;
+
+//       const { data: profile } = await supabase
+//         .from("profiles")
+//         .select("id")
+//         .eq("user_id", userId)
+//         .single();
+
+//       if (!profile) {
+//         router.replace("/(screen)/CredencialForm");
+//       } else {
+//         router.replace("/(screen)/Dashboard");
+//       }
+
+//       finishLoading();
 //     };
+
+//     run();
 //   }, []);
+
+//   /* ===== SMOOTH FADE OUT ===== */
+//   const finishLoading = () => {
+//     Animated.timing(fadeAnim, {
+//       toValue: 0,
+//       duration: 400,
+//       useNativeDriver: true,
+//     }).start(() => setLoading(false));
+//   };
 
 //   return (
 //     <SafeAreaProvider>
 //       <StatusBar translucent backgroundColor="transparent" style="dark" />
-//       <Stack screenOptions={{ headerShown: false }} />
+
+//       {/* MAIN NAVIGATION */}
+//       {/* <Stack screenOptions={{ headerShown: false }} /> */}
+//       <ProfileProvider>
+//         <LocationProvider>
+//           <UploadProvider>
+//             <Stack screenOptions={{ headerShown: false }} />
+//           </UploadProvider>
+//         </LocationProvider>
+//       </ProfileProvider>
+
+//       {/* LOADING OVERLAY */}
+//       {loading && (
+//         <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+//           <ActivityIndicator size="large" color="#2CB4B2" />
+//         </Animated.View>
+//       )}
 //     </SafeAreaProvider>
 //   );
 // }
 
-
-
+// const styles = StyleSheet.create({
+//   overlay: {
+//     ...StyleSheet.absoluteFillObject,
+//     backgroundColor: "#FFFFFF",
+//     justifyContent: "center",
+//     alignItems: "center",
+//     zIndex: 999,
+//   },
+// });
 
 import * as NavigationBar from "expo-navigation-bar";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  View,
-  StyleSheet,
-} from "react-native";
+import { ActivityIndicator, Animated, StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+import { DashboardProvider } from "../Context/DashboardContext";
+import { LocationProvider, useLocationStore } from "../Context/LocationContext";
+import { ProfileProvider } from "../Context/ProfileContext";
+import { UploadProvider } from "../Context/UploadContext";
+
+import {
+  fetchUserAddresses,
+  getCurrentLocation,
+  reverseGeocode,
+} from "../Services/locationService";
+
 import { supabase } from "../Utils/supabase";
+
+/* ---------- LOCATION BOOTSTRAPPER ---------- */
+function LocationBootstrapper() {
+  const { setLocationState, setAddresses, setLocationFormated } =
+    useLocationStore();
+
+  useEffect(() => {
+    const bootstrapLocation = async () => {
+      // 1️⃣ Get GPS
+      const coords = await getCurrentLocation();
+      if (!coords) return;
+
+      // 2️⃣ Reverse geocode
+      const addressText = await reverseGeocode(coords);
+
+      // 3️⃣ Store current location (dashboard default)
+      setLocationState(coords, addressText);
+      setLocationFormated(addressText);
+      // 4️⃣ Fetch saved addresses (no UI dependency)
+      const saved = await fetchUserAddresses();
+      setAddresses(saved);
+    };
+
+    bootstrapLocation();
+  }, []);
+
+  return null;
+}
 
 export default function RootLayout() {
   const [loading, setLoading] = useState(true);
@@ -132,10 +197,22 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar translucent backgroundColor="transparent" style="dark" />
 
-      {/* MAIN NAVIGATION */}
-      <Stack screenOptions={{ headerShown: false }} />
+      {/* ===== PROVIDERS ===== */}
+      <ProfileProvider>
+        <LocationProvider>
+          <DashboardProvider>
+            <UploadProvider>
+              {/* LOCATION INIT (runs once) */}
+              <LocationBootstrapper />
 
-      {/* LOADING OVERLAY */}
+              {/* NAVIGATION */}
+              <Stack screenOptions={{ headerShown: false }} />
+            </UploadProvider>
+          </DashboardProvider>
+        </LocationProvider>
+      </ProfileProvider>
+
+      {/* ===== LOADING OVERLAY ===== */}
       {loading && (
         <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
           <ActivityIndicator size="large" color="#2CB4B2" />

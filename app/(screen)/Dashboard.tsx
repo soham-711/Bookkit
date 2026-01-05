@@ -1,192 +1,31 @@
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Location from "expo-location";
-import React, { useEffect, useMemo, useState, useRef } from "react"; // Added useRef
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { router } from "expo-router";
+import React, { useEffect, useMemo, useRef } from "react"; // Added useRef
 import {
+  Animated,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   useWindowDimensions,
-  Animated, // Added Animated
-  Easing,   // Added Easing
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useDashboardStore } from "../../Context/DashboardContext";
+import { useLocationStore } from "../../Context/LocationContext";
+import { useProfileStore } from "../../Context/ProfileContext";
+import {
+  getCurrentLocation,
+  reverseGeocode,
+} from "../../Services/locationService";
+
 import BannerCarousel from "../Components/Banner";
+import { FloatingActionDock } from "../Components/FloatingUploadBtn";
+import LocationEmptyState from "../Components/LocationEmptyState";
 import SuggestedBooksCart from "../Components/SuggestedBooksCart";
-import { router } from "expo-router";
-
-const NEAR_BOOKS = [
-  {
-    id: "1",
-    title: "NCERT Mathematics Textbook for Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jemh1cc.jpg",
-    distance: "2.5 km",
-    mrp: 2000,
-    price: 1509,
-  },
-  {
-    id: "2",
-    title: "NCERT Chemistry Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/kech1cc.jpg",
-    distance: "2 km",
-    mrp: 2500,
-    price: 1900,
-  },
-  {
-    id: "3",
-    title: "NCERT Science Textbook for Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jesc1cc.jpg",
-    distance: "1.5 km",
-    mrp: 1500,
-    price: 1000,
-  },
-  {
-    id: "4",
-    title: "General English Textbook for All Exams",
-    image: "https://ncert.nic.in/textbook/pdf/jehe1cc.jpg",
-    distance: "3 km",
-    mrp: 2500,
-    price: 1899,
-  },
-  {
-    id: "5",
-    title: "Flamingo English Textbook for Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/lefl1cc.jpg",
-    distance: "500 m",
-    mrp: 1200,
-    price: 899,
-  },
-  {
-    id: "6",
-    title: "Vistas English Textbook for Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/levt1cc.jpg",
-    distance: "600 m",
-    mrp: 1200,
-    price: 899,
-  },
-];
-
-const TRENDING_BOOKS = [
-  {
-    id: "1",
-    title: "NCERT Physics Class XII Part 1",
-    image: "https://ncert.nic.in/textbook/pdf/leph1cc.jpg",
-    distance: "1.8 km",
-    mrp: 1800,
-    price: 1350,
-  },
-  {
-    id: "2",
-    title: "NCERT Biology Class XI",
-    image: "https://ncert.nic.in/textbook/pdf/lebo1cc.jpg",
-    distance: "2.3 km",
-    mrp: 1600,
-    price: 1200,
-  },
-  {
-    id: "3",
-    title: "NCERT History Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jehs1cc.jpg",
-    distance: "1.2 km",
-    mrp: 1400,
-    price: 1050,
-  },
-  {
-    id: "4",
-    title: "NCERT Geography Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/kehs1cc.jpg",
-    distance: "2.8 km",
-    mrp: 1700,
-    price: 1275,
-  },
-  {
-    id: "5",
-    title: "NCERT Economics Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/keec1cc.jpg",
-    distance: "3.5 km",
-    mrp: 1900,
-    price: 1425,
-  },
-  {
-    id: "6",
-    title: "NCERT Political Science Class XI",
-    image: "https://ncert.nic.in/textbook/pdf/leps1cc.jpg",
-    distance: "1.6 km",
-    mrp: 1500,
-    price: 1125,
-  },
-];
-
-const SUGGESTED_BOOKS = [
-  {
-    id: "1",
-    title: "NCERT Mathematics Textbook for Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jemh1cc.jpg",
-    distance: "2.5 km",
-    mrp: 2000,
-    price: 1509,
-  },
-  {
-    id: "2",
-    title: "NCERT Chemistry Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/kech1cc.jpg",
-    distance: "2 km",
-    mrp: 2500,
-    price: 1900,
-  },
-  {
-    id: "3",
-    title: "NCERT Science Textbook for Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jesc1cc.jpg",
-    distance: "1.5 km",
-    mrp: 1500,
-    price: 1000,
-  },
-  {
-    id: "4",
-    title: "NCERT Physics Class XII Part 1",
-    image: "https://ncert.nic.in/textbook/pdf/leph1cc.jpg",
-    distance: "1.8 km",
-    mrp: 1800,
-    price: 1350,
-  },
-  {
-    id: "5",
-    title: "NCERT Biology Class XI",
-    image: "https://ncert.nic.in/textbook/pdf/lebo1cc.jpg",
-    distance: "2.3 km",
-    mrp: 1600,
-    price: 1200,
-  },
-  {
-    id: "6",
-    title: "NCERT History Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jehs1cc.jpg",
-    distance: "1.2 km",
-    mrp: 1400,
-    price: 1050,
-  },
-  {
-    id: "7",
-    title: "General English Textbook for All Exams",
-    image: "https://ncert.nic.in/textbook/pdf/jehe1cc.jpg",
-    distance: "3 km",
-    mrp: 2500,
-    price: 1899,
-  },
-  {
-    id: "8",
-    title: "Flamingo English Textbook for Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/lefl1cc.jpg",
-    distance: "500 m",
-    mrp: 1200,
-    price: 899,
-  },
-];
 
 // Responsive scaling utilities
 const scale = (size: number, width: number) => (width / 375) * size;
@@ -195,8 +34,19 @@ const moderateScale = (size: number, factor: number = 0.5, width: number) =>
   size + (scale(size, width) - size) * factor;
 
 const Dashboard = () => {
+  const { profileImage, isProfileLoaded } = useProfileStore();
+  const {
+    formattedAddress,
+    source,
+    isReady,
+    location,
+    setGpsLocation,
+    setLocationFormated,
+  } = useLocationStore();
+  const { data, loading, fetchDashboard } = useDashboardStore();
+
   const { width, height } = useWindowDimensions();
-  const [liveAddress, setLiveAddress] = useState("Fetching location...");
+
   const insets = useSafeAreaInsets();
 
   // Animation values
@@ -216,10 +66,26 @@ const Dashboard = () => {
       // 2. Shake Button sequence
       Animated.sequence([
         Animated.delay(100),
-        Animated.timing(shakeAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: -1, duration: 100, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
+        Animated.timing(shakeAnim, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: -1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
       ]).start(() => {
         // 3. Wait 3 seconds then fade out tooltip
         setTimeout(() => {
@@ -244,69 +110,50 @@ const Dashboard = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (source !== "gps") return;
+    if (isReady) return; // already resolved
+
+    const resolveGps = async () => {
+      const coords = await getCurrentLocation();
+      if (!coords) return;
+
+      const address = await reverseGeocode(coords);
+      setGpsLocation(coords, address);
+      setLocationFormated(address);
+    };
+
+    resolveGps();
+  }, [source, isReady]);
+
+  useEffect(() => {
+    if (!location || !isReady) return;
+
+    fetchDashboard(location);
+  }, [location, isReady]);
+
+  const isDashboardEmpty =
+    data &&
+    data.nearYou.length === 0 &&
+    data.aroundYou.length === 0 &&
+    data.explore.length === 0;
+
   // Interpolate shake value to rotation degrees
   const spin = shakeAnim.interpolate({
     inputRange: [-1, 1],
     outputRange: ["-15deg", "15deg"],
   });
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          setLiveAddress("Location permission denied");
-          return;
-        }
-
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-
-        const { latitude, longitude } = location.coords;
-
-        const addressResponse = await Location.reverseGeocodeAsync({
-          latitude,
-          longitude,
-        });
-
-        if (addressResponse.length > 0) {
-          const addr = addressResponse[0];
-
-          const formattedAddress = [
-            addr.name,
-            addr.city || addr.district,
-            addr.subregion,
-            addr.street,
-            addr.region,
-          ]
-            .filter(Boolean)
-            .join(", ");
-
-          setLiveAddress(formattedAddress);
-        }
-      } catch (error) {
-        console.log("Location error:", error);
-        setLiveAddress("Unable to fetch location");
-      }
-    })();
-  }, []);
-
   // Memoize styles to prevent unnecessary recalculations
   const styles = useMemo(() => createStyles(width, height), [width, height]);
 
-  // Memoize grid rows to prevent unnecessary recalculations
-  const suggestedBooksRows = useMemo(() => {
-    const rows = [];
-    for (let i = 0; i < SUGGESTED_BOOKS.length; i += 2) {
-      rows.push(SUGGESTED_BOOKS.slice(i, i + 2));
-    }
-    return rows;
-  }, []);
-
   // Reusable Book Card Component matching BookNearMeScreen design
-  const renderBookCard = (item: typeof NEAR_BOOKS[number]) => (
-    <TouchableOpacity key={item.id} style={styles.bookCard} activeOpacity={0.8}>
+  const renderBookCard = (item: any) => (
+    <TouchableOpacity
+      key={item.book.id}
+      style={styles.bookCard}
+      activeOpacity={0.8}
+    >
       <View style={styles.imageWrapper}>
         <View style={styles.distanceBadge}>
           <Ionicons
@@ -314,12 +161,12 @@ const Dashboard = () => {
             size={scale(10, width)}
             color="#f90000ff"
           />
-          <Text style={styles.distanceText}>{item.distance}</Text>
+          <Text style={styles.distanceText}>{item.distance_km} km</Text>
         </View>
 
         <View style={styles.imagePlaceholder}>
           <Image
-            source={{ uri: item.image }}
+            source={{ uri: item.book.images?.[0] }}
             style={styles.bookImage}
             contentFit="cover"
             transition={200}
@@ -329,64 +176,41 @@ const Dashboard = () => {
 
       <View style={styles.infoContainer}>
         <Text style={styles.bookName} numberOfLines={2}>
-          {item.title}
+          {item.book.title}
         </Text>
 
         <View style={styles.priceRow}>
-          <Text style={styles.mrp}>₹{item.mrp}</Text>
-          <Text style={styles.price}>₹{item.price}</Text>
+          <Text style={styles.mrp}>₹{item.book.original_price}</Text>
+          <Text style={styles.price}>₹{item.book.generated_price}</Text>
         </View>
 
-        <Text style={styles.buyText}>Buy at ₹{item.price}</Text>
+        <Text style={styles.buyText}>Buy at ₹{item.book.generated_price}</Text>
       </View>
     </TouchableOpacity>
   );
 
-  // Render grid card for suggested books
-  const renderSuggestedBookCard = (item: typeof SUGGESTED_BOOKS[number]) => (
-    <TouchableOpacity key={item.id} style={styles.suggestedBookCard} activeOpacity={0.8}>
-      <View style={styles.imageWrapper}>
-        <View style={styles.distanceBadge}>
-          <Ionicons
-            name="location-sharp"
-            size={scale(10, width)}
-            color="#f90000ff"
-          />
-          <Text style={styles.distanceText}>{item.distance}</Text>
-        </View>
-
-        <View style={styles.imagePlaceholder}>
-          <Image
-            source={{ uri: item.image }}
-            style={styles.bookImage}
-            contentFit="cover"
-            transition={200}
-          />
-        </View>
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Loading books near you...</Text>
       </View>
-
-      <View style={styles.infoContainer}>
-        <Text style={styles.bookName} numberOfLines={2}>
-          {item.title}
-        </Text>
-
-        <View style={styles.priceRow}>
-          <Text style={styles.mrp}>₹{item.mrp}</Text>
-          <Text style={styles.price}>₹{item.price}</Text>
-        </View>
-
-        <Text style={styles.buyText}>Buy at ₹{item.price}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
-      <LinearGradient colors={["#6FE9F0", "#CFF7FA"]} style={styles.container}>
+      <LinearGradient
+        colors={["#ffffff", "#f2fbfbff"]}
+        style={styles.container}
+      >
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            <TouchableOpacity activeOpacity={0.7} style={styles.locationBox}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.locationBox}
+              onPress={() => router.push("/Components/HomeLocationChange")}
+            >
               <Ionicons
                 name="location-sharp"
                 size={scale(16, width)}
@@ -401,7 +225,11 @@ const Dashboard = () => {
             </TouchableOpacity>
 
             <View style={styles.rightIcons}>
-              <TouchableOpacity style={styles.coinBox} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={styles.coinBox}
+                activeOpacity={0.7}
+                onPress={() => router.push("/(screen)/GoldSection")}
+              >
                 <LinearGradient
                   colors={["#FFD700", "#FFA500"]}
                   style={styles.coinIconWrapper}
@@ -414,7 +242,7 @@ const Dashboard = () => {
                     color="#FFFFFF"
                   />
                 </LinearGradient>
-                <Text style={styles.coinText}>10</Text>
+                <Text style={styles.coinText}>0</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -430,7 +258,11 @@ const Dashboard = () => {
                 >
                   <View style={styles.avatar}>
                     <Image
-                      source={require("../../assets/images/profile.png")}
+                      source={
+                        profileImage
+                          ? { uri: profileImage }
+                          : require("../../assets/images/profile.png")
+                      }
                       style={styles.profileImage}
                       contentFit="cover"
                     />
@@ -441,7 +273,7 @@ const Dashboard = () => {
           </View>
 
           <Text style={styles.addressText} numberOfLines={1}>
-            {liveAddress}
+            {!isReady ? "Fetching your location..." : formattedAddress}
           </Text>
 
           <TouchableOpacity
@@ -463,35 +295,6 @@ const Dashboard = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Floating Upload Button Container */}
-        <View style={styles.floatingContainer} pointerEvents="box-none">
-            {/* Tooltip Bubble */}
-            <Animated.View style={[styles.tooltipContainer, { opacity: tooltipOpacity }]}>
-                <Text style={styles.tooltipText}>Sell Book</Text>
-                <View style={styles.tooltipArrow} />
-            </Animated.View>
-
-            {/* Shaking Button */}
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={styles.floatingUploadButton}
-                    onPress={() => router.push('/(screen)/UploadScreen1')}
-                >
-                    <LinearGradient
-                    colors={["#44D6FF", "#002593"]}
-                    style={styles.uploadButtonGradient}
-                    >
-                    <Image
-                        source={require("../../assets/images/Sellbook.png")}
-                        contentFit="contain"
-                        style={styles.uploadButtonImage}
-                    />
-                    </LinearGradient>
-                </TouchableOpacity>
-            </Animated.View>
-        </View>
-
         {/* Main Content */}
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -501,7 +304,7 @@ const Dashboard = () => {
           <BannerCarousel />
 
           {/* Books Near Me */}
-          <View style={styles.section}>
+          {/* <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Books Near Me</Text>
               <TouchableOpacity
@@ -520,15 +323,39 @@ const Dashboard = () => {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.bookList}
-            >
-              {NEAR_BOOKS.map((item) => renderBookCard(item))}
-            </ScrollView>
-          </View>
+            ></ScrollView>
+          </View> */}
+
+          {!!data?.nearYou?.length && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Books Near Me</Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/(screen)/BookNearMeScreen")}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="arrow-forward"
+                    size={scale(18, width)}
+                    color="#000"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.bookList}
+              >
+                {data.nearYou.map((item: any) => renderBookCard(item))}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Trending Books */}
-          <View style={styles.section}>
+          {/* <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Trending Books</Text>
+              <Text style={styles.sectionTitle}>Books Around You</Text>
               <TouchableOpacity activeOpacity={0.7}>
                 <Ionicons
                   name="arrow-forward"
@@ -545,32 +372,73 @@ const Dashboard = () => {
             >
               {TRENDING_BOOKS.map((item) => renderBookCard(item))}
             </ScrollView>
-          </View>
+          </View> */}
+          {!!data?.aroundYou?.length && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Books Around You</Text>
+                <TouchableOpacity activeOpacity={0.7}>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={scale(18, width)}
+                    color="#000"
+                  />
+                </TouchableOpacity>
+              </View>
 
-          {/* Suggested Books Grid */}
-          <View style={styles.separatedSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Suggested Books</Text>
-              <TouchableOpacity activeOpacity={0.7}>
-                <Ionicons
-                  name="arrow-forward"
-                  size={scale(18, width)}
-                  color="#000"
-                />
-              </TouchableOpacity>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.bookList}
+              >
+                {data.aroundYou.map((item: any) => renderBookCard(item))}
+              </ScrollView>
             </View>
+          )}
 
-            <View style={styles.gridContainer}>
-              {suggestedBooksRows.map((row, rowIndex) => (
-                <View key={rowIndex} style={styles.suggestedRow}>
-                  {row.map((item) => renderSuggestedBookCard(item))}
-                </View>
-              ))}
-            </View>
-          </View>
+          {/* <View
+            style={{
+              width: "100%",
+              height: 1,
+              backgroundColor: "#e0e8ecff",
+              marginTop: 30,
+            }}
+          />
+          <SuggestedBooksCart /> */}
 
-          <SuggestedBooksCart />
+          {data?.explore && data.explore.length > 0 && (
+            <>
+              <View
+                style={{
+                  width: "100%",
+                  height: 1,
+                  backgroundColor: "#e0e8ecff",
+                  marginTop: 30,
+                }}
+              />
+              <SuggestedBooksCart books={data.explore} />
+            </>
+          )}
+          {isDashboardEmpty && (
+            <LocationEmptyState
+              title="No books found at this location"
+              subtitle="Change your location to discover books nearby"
+            />
+          )}
         </ScrollView>
+        {/* Positioned absolutely at the bottom */}
+        <View
+          style={{
+            position: "absolute",
+            bottom: -50,
+            left: 0,
+            right: 0,
+            zIndex: 999,
+          }}
+          pointerEvents="box-none" // Allows touches to pass through empty space
+        >
+          <FloatingActionDock />
+        </View>
       </LinearGradient>
 
       <View style={{ height: insets.bottom, backgroundColor: "#111111" }} />
@@ -619,7 +487,7 @@ const createStyles = (width: number, height: number) => {
     addressText: {
       fontSize: ms(12),
       color: "#000000E0",
-      marginTop: vs(1),
+
       fontWeight: "400",
       marginBottom: vs(10),
       width: "70%",
@@ -719,7 +587,6 @@ const createStyles = (width: number, height: number) => {
       borderRadius: ms(16),
       marginHorizontal: 5,
       paddingVertical: vs(15),
-      
     },
     sectionHeader: {
       flexDirection: "row",
@@ -743,8 +610,8 @@ const createStyles = (width: number, height: number) => {
       backgroundColor: "#fff",
       borderRadius: ms(12),
       padding: s(8),
-      elevation: 4,
-      shadowColor: "#000",
+      elevation: 2,
+      shadowColor: "#636161ff",
       shadowOpacity: 0.1,
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 4 },
@@ -817,30 +684,15 @@ const createStyles = (width: number, height: number) => {
       fontWeight: "700",
     },
     gridContainer: { paddingHorizontal: gutter },
-    suggestedRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: vs(12),
-    },
-    suggestedBookCard: {
-      width: (width - gutter * 2 - s(16)) / 2,
-      backgroundColor: "#fff",
-      borderRadius: ms(12),
-      padding: s(8),
-      elevation: 4,
-      shadowColor: "#000",
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-    },
+
     // UPDATED FLOATING BUTTON STYLES
     floatingContainer: {
-        position: "absolute",
-        bottom: vs(40),
-        right: s(10),
-        zIndex: 1000,
-        alignItems: "center",
-        justifyContent: "center",
+      position: "absolute",
+      bottom: vs(40),
+      right: s(10),
+      zIndex: 1000,
+      alignItems: "center",
+      justifyContent: "center",
     },
     floatingUploadButton: {
       shadowColor: "#000",
@@ -861,37 +713,37 @@ const createStyles = (width: number, height: number) => {
     uploadButtonImage: { width: s(30), height: s(30), top: 3 },
     // NEW TOOLTIP STYLES
     tooltipContainer: {
-        position: 'absolute',
-        bottom: s(70), 
-        backgroundColor: '#fff',
-        paddingVertical: s(6),
-        paddingHorizontal: s(12),
-        borderRadius: s(8),
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 5,
-        alignItems: 'center',
+      position: "absolute",
+      bottom: s(70),
+      backgroundColor: "#fff",
+      paddingVertical: s(6),
+      paddingHorizontal: s(12),
+      borderRadius: s(8),
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 5,
+      alignItems: "center",
     },
     tooltipText: {
-        fontSize: ms(12),
-        fontWeight: 'bold',
-        color: '#002593',
+      fontSize: ms(12),
+      fontWeight: "bold",
+      color: "#002593",
     },
     tooltipArrow: {
-        position: 'absolute',
-        bottom: -s(6),
-        width: 0,
-        height: 0,
-        backgroundColor: 'transparent',
-        borderStyle: 'solid',
-        borderLeftWidth: s(6),
-        borderRightWidth: s(6),
-        borderTopWidth: s(6),
-        borderLeftColor: 'transparent',
-        borderRightColor: 'transparent',
-        borderTopColor: '#fff',
-    }
+      position: "absolute",
+      bottom: -s(6),
+      width: 0,
+      height: 0,
+      backgroundColor: "transparent",
+      borderStyle: "solid",
+      borderLeftWidth: s(6),
+      borderRightWidth: s(6),
+      borderTopWidth: s(6),
+      borderLeftColor: "transparent",
+      borderRightColor: "transparent",
+      borderTopColor: "#fff",
+    },
   });
 };
