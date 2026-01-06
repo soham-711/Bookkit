@@ -1,26 +1,24 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
-  Keyboard,
   Platform,
   Pressable,
+  StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   View,
   useWindowDimensions,
-  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { Image } from "expo-image";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
-
-
+import { useLocationStore } from "../../Context/LocationContext";
+import { fetchBooksByDistance } from "../../Services/dashboardService";
+import { LocationCoords } from "../../Services/locationService";
 // === TYPES ===
 type SortKey = "distanceAsc" | "priceAsc" | "priceDesc" | "titleAsc";
-
 
 type Params = {
   selectedSort?: string;
@@ -31,59 +29,7 @@ type Params = {
   searchTag?: string;
 };
 
-
-// === DATA ===
-const BOOKS = [
-  {
-    id: "1",
-    title: "NCERT Mathematics Textbook for Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jemh1cc.jpg",
-    distance: "2.5 km",
-    mrp: 2000,
-    price: 1509,
-  },
-  {
-    id: "2",
-    title: "NCERT Chemistry Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/kech1cc.jpg",
-    distance: "2 km",
-    mrp: 2500,
-    price: 1900,
-  },
-  {
-    id: "3",
-    title: "NCERT Science Textbook for Class X",
-    image: "https://ncert.nic.in/textbook/pdf/jesc1cc.jpg",
-    distance: "1.5 km",
-    mrp: 1500,
-    price: 1000,
-  },
-  {
-    id: "4",
-    title: "General English Textbook for All Exams",
-    image: "https://ncert.nic.in/textbook/pdf/jehe1cc.jpg",
-    distance: "3 km",
-    mrp: 2500,
-    price: 1899,
-  },
-  {
-    id: "5",
-    title: "Flamingo English Textbook for Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/lefl1cc.jpg",
-    distance: "500 m",
-    mrp: 1200,
-    price: 899,
-  },
-  {
-    id: "6",
-    title: "Vistas English Textbook for Class XII",
-    image: "https://ncert.nic.in/textbook/pdf/levt1cc.jpg",
-    distance: "600 m",
-    mrp: 1200,
-    price: 899,
-  },
-];
-
+// === DATA ==
 
 // === UTILS ===
 const scale = (size: number, width: number) => (width / 375) * size;
@@ -91,24 +37,7 @@ const verticalScale = (size: number, height: number) => (height / 812) * size;
 const moderateScale = (size: number, factor: number = 0.5, width: number) =>
   size + (scale(size, width) - size) * factor;
 
-
-const parseDistanceKm = (d: string) => {
-  const s = d.trim().toLowerCase();
-  if (s.endsWith("km")) return Number(s.replace("km", "").trim()) || 0;
-  if (s.endsWith("m")) return (Number(s.replace("m", "").trim()) || 0) / 1000;
-  return Number(s) || 0;
-};
-
-
-const toNumOrUndef = (v?: string) => {
-  if (!v || !v.trim()) return undefined;
-  const n = Number(v.trim());
-  return Number.isFinite(n) ? n : undefined;
-};
-
-
 const toBool = (v?: string) => v === "true";
-
 
 export default function BookNearMeScreen() {
   const { width, height } = useWindowDimensions();
@@ -123,85 +52,113 @@ export default function BookNearMeScreen() {
     maxPrice: undefined as number | undefined,
     onlyDiscounted: false,
   });
+  const { location, isReady } = useLocationStore();
 
-  // Apply params including search tag
+  const lastLocationKeyRef = useRef<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [books, setBooks] = useState<any[]>([]);
+
+  const buildLocationKey = (location: LocationCoords) =>
+    `${location.latitude.toFixed(4)}-${location.longitude.toFixed(4)}`;
+
+  const fetchNearMeBooks = async (location: LocationCoords, force = false) => {
+    const key = buildLocationKey(location);
+
+    // 🚫 prevent unnecessary refetch
+    if (!force && lastLocationKeyRef.current === key) {
+      return;
+    }
+
+    lastLocationKeyRef.current = key;
+
+    try {
+      setLoading(true);
+
+      // ✅ CALL YOUR EXISTING SERVICE
+      const data = await fetchBooksByDistance(location, 0, 5);
+
+      setBooks(data);
+    } catch (err) {
+      console.error("Near me fetch failed", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (params.selectedSort) setSortKey(params.selectedSort as SortKey);
-    
-    if (params.searchTag) {
-      setSearchTag(params.searchTag);
-    }
+    if (!isReady || !location) return;
+    fetchNearMeBooks(location);
+  }, [location, isReady]);
 
-    const maxD = toNumOrUndef(params.selectedMaxDistanceKm);
-    const minP = toNumOrUndef(params.selectedMinPrice);
-    const maxP = toNumOrUndef(params.selectedMaxPrice);
-    const disc = toBool(params.selectedOnlyDiscounted);
+  const SkeletonCard = ({
+    width,
+    height,
+  }: {
+    width: number;
+    height: number;
+  }) => {
+    const styles = createStyles(width, height);
 
-    if (
-      params.selectedMaxDistanceKm !== undefined ||
-      params.selectedMinPrice !== undefined ||
-      params.selectedMaxPrice !== undefined ||
-      params.selectedOnlyDiscounted !== undefined
-    ) {
-      setFilters({
-        maxDistanceKm: maxD,
-        minPrice: minP,
-        maxPrice: maxP,
-        onlyDiscounted: disc,
-      });
-    }
-  }, [params]);
+    return (
+      <View style={[styles.bookCard, { opacity: 0.6 }]}>
+        <View style={styles.imageWrapper}>
+          <View
+            style={[styles.imagePlaceholder, { backgroundColor: "#E5E7EB" }]}
+          />
+        </View>
+
+        <View style={styles.infoContainer}>
+          <View
+            style={{
+              height: 14,
+              backgroundColor: "#E5E7EB",
+              borderRadius: 6,
+              marginBottom: 8,
+            }}
+          />
+          <View
+            style={{
+              height: 12,
+              backgroundColor: "#E5E7EB",
+              borderRadius: 6,
+              width: "60%",
+              marginBottom: 6,
+            }}
+          />
+          <View
+            style={{
+              height: 12,
+              backgroundColor: "#E5E7EB",
+              borderRadius: 6,
+              width: "40%",
+            }}
+          />
+        </View>
+      </View>
+    );
+  };
+
+  const LoaderGrid = () => (
+    <View
+      style={{
+        flexDirection: "row",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+      }}
+    >
+      {Array.from({ length: 6 }).map((_, i) => (
+        <SkeletonCard key={i} width={width} height={height} />
+      ))}
+    </View>
+  );
 
   // Filter & Sort Data
-  const data = useMemo(() => {
-    const s = searchTag.trim().toLowerCase();
-    let arr = BOOKS.filter((b) => !s || b.title.toLowerCase().includes(s));
-
-    if (filters.maxDistanceKm != null) {
-      arr = arr.filter((b) => parseDistanceKm(b.distance) <= filters.maxDistanceKm!);
-    }
-    if (filters.minPrice != null) {
-      arr = arr.filter((b) => b.price >= filters.minPrice!);
-    }
-    if (filters.maxPrice != null) {
-      arr = arr.filter((b) => b.price <= filters.maxPrice!);
-    }
-    if (filters.onlyDiscounted) {
-      arr = arr.filter((b) => b.mrp > b.price);
-    }
-
-    const sorted = [...arr];
-    sorted.sort((a, b) => {
-      switch (sortKey) {
-        case "priceAsc": return a.price - b.price;
-        case "priceDesc": return b.price - a.price;
-        case "titleAsc": return a.title.localeCompare(b.title);
-        case "distanceAsc": default:
-          return parseDistanceKm(a.distance) - parseDistanceKm(b.distance);
-      }
-    });
-    return sorted;
-  }, [searchTag, sortKey, filters]);
-
   // === RENDER ITEM WITH NAVIGATION TO DISCLOSURE PAGE ===
-  const renderItem = ({ item }: { item: (typeof BOOKS)[number] }) => {
+  const renderItem = ({ item }: { item: any }) => {
     return (
       <Pressable
         style={styles.bookCard}
-        onPress={() => {
-          // Navigate to disclosure/details page with book data
-          router.push({
-            pathname: '/(screen)/DiscloseScreen',
-            params: {
-              bookId: item.id,
-              title: item.title,
-              image: item.image,
-              distance: item.distance,
-              mrp: item.mrp.toString(),
-              price: item.price.toString(),
-            },
-          });
-        }}
+        onPress={() => router.push("/(screen)/DiscloseScreen")}
       >
         {/* Image Section */}
         <View style={styles.imageWrapper}>
@@ -211,12 +168,12 @@ export default function BookNearMeScreen() {
               size={scale(10, width)}
               color="#f90000ff"
             />
-            <Text style={styles.distanceText}>{item.distance}</Text>
+            <Text style={styles.distanceText}>{item.distance_km}</Text>
           </View>
-          
+
           <View style={styles.imagePlaceholder}>
             <Image
-              source={{ uri: item.image }}
+              source={{ uri: item.book.images?.[0] }}
               style={styles.bookImage}
               contentFit="cover"
               transition={200}
@@ -227,50 +184,54 @@ export default function BookNearMeScreen() {
         {/* Info Section */}
         <View style={styles.infoContainer}>
           <Text style={styles.bookName} numberOfLines={2}>
-            {item.title}
+            {item.book.title}
           </Text>
 
           <View style={styles.priceRow}>
-            <Text style={styles.mrp}>₹{item.mrp}</Text>
-            <Text style={styles.price}>₹{item.price}</Text>
+            <Text style={styles.mrp}>₹{item.book.original_price}</Text>
+            <Text style={styles.price}>₹{item.book.generated_price}</Text>
           </View>
 
-          <Text style={styles.buyText}>Buy at ₹{item.price}</Text>
+          <Text style={styles.buyText}>
+            Buy at ₹{item.book.generated_price}
+          </Text>
         </View>
       </Pressable>
     );
   };
 
-  // === UPDATED LIST HEADER WITH SEARCH TAG & CLICKABLE SEARCH ===
-  const ListHeaderComponent = () => (
-    <>
+  // === FIXED HEADER COMPONENT ===
+  const HeaderComponent = () => (
+    <View style={styles.headerContainer}>
       <View style={styles.topBar}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={styles.icon28.fontSize} color="#0B1220" />
+          <Ionicons
+            name="arrow-back"
+            size={styles.icon28.fontSize}
+            color="#0B1220"
+          />
         </Pressable>
-        
+
         {/* Search Bar - Navigates to SearchScreen */}
-        <Pressable 
+        <Pressable
           style={styles.searchBar}
           onPress={() => router.push("/(screen)/SearchScreen")}
         >
-          <Ionicons 
-            name="search-outline" 
-            size={styles.icon20.fontSize} 
-            color="#00000060" 
+          <Ionicons
+            name="search-outline"
+            size={styles.icon20.fontSize}
+            color="#00000060"
           />
-          <Text style={styles.searchPlaceholder}>
-            Search 
-          </Text>
+          <Text style={styles.searchPlaceholder}>Search</Text>
           <View style={styles.micDivider} />
-          <Ionicons 
-            name="mic" 
-            size={styles.icon22.fontSize} 
-            color="#000000ff" 
+          <Ionicons
+            name="mic"
+            size={styles.icon22.fontSize}
+            color="#000000ff"
           />
         </Pressable>
-        
-        <Pressable 
+
+        <Pressable
           style={styles.sellBtn}
           onPress={() => router.push("/(screen)/UploadScreen1")}
         >
@@ -286,64 +247,70 @@ export default function BookNearMeScreen() {
       {searchTag ? (
         <View style={styles.tagContainer}>
           <View style={styles.searchChip}>
-            <Ionicons 
-              name="search" 
-              size={scale(14, width)} 
-              color="#003EF9" 
-            />
+            <Ionicons name="search" size={scale(14, width)} color="#003EF9" />
             <Text style={styles.chipText}>{searchTag}</Text>
-            <Pressable 
+            <Pressable
               onPress={() => {
                 setSearchTag("");
                 router.setParams({ searchTag: "" });
               }}
               hitSlop={8}
             >
-              <Ionicons 
-                name="close-circle" 
-                size={scale(16, width)} 
-                color="#64748B" 
+              <Ionicons
+                name="close-circle"
+                size={scale(16, width)}
+                color="#64748B"
               />
             </Pressable>
           </View>
           <Text style={styles.resultCount}>
-            {data.length} {data.length === 1 ? "result" : "results"} found
+            {books.length} {books.length === 1 ? "result" : "results"} found
           </Text>
         </View>
       ) : null}
-    </>
+    </View>
   );
+
+  // === LIST CONTENT HEADER (EMPTY TO OFFSET FIXED HEADER) ===
+  const ListHeaderSpacer = () => <View style={styles.listHeaderSpacer} />;
 
   return (
     <View style={styles.root}>
-      {/* Light Blue Background Gradient */}
-      <LinearGradient colors={["#ffffffff", "#f2fbfbff"]} style={StyleSheet.absoluteFill} />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      <SafeAreaView style={styles.safe} edges={["top"]}>
+      {/* Light Blue Background Gradient */}
+      <LinearGradient
+        colors={["#ffffffff", "#f2fbfbff"]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* FIXED HEADER */}
+      <HeaderComponent />
+
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <FlatList
-          data={data}
-          keyExtractor={(item) => item.id}
+          data={books}
+          keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.listContent}
-          ListHeaderComponent={ListHeaderComponent}
+          ListHeaderComponent={ListHeaderSpacer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons 
-                name="search-outline" 
-                size={scale(60, width)} 
-                color="#CBD5E1" 
-              />
-              <Text style={styles.emptyText}>No books found</Text>
-              {searchTag ? (
-                <Text style={styles.emptySubtext}>
-                  Try searching with different keywords
-                </Text>
-              ) : null}
-            </View>
+            loading ? (
+              <LoaderGrid />
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons
+                  name="search-outline"
+                  size={scale(60, width)}
+                  color="#CBD5E1"
+                />
+                <Text style={styles.emptyText}>No books found</Text>
+              </View>
+            )
           }
         />
 
@@ -351,76 +318,123 @@ export default function BookNearMeScreen() {
         <View style={styles.bottomBar}>
           <Pressable
             style={[styles.bottomBtn, styles.bottomBtnLeft]}
-            onPress={() => router.push({
-              pathname: "../(screen)/SortScreen",
-              params: { currentSort: sortKey },
-            })}
+            onPress={() =>
+              router.push({
+                pathname: "../(screen)/SortScreen",
+                params: { currentSort: sortKey },
+              })
+            }
           >
-            <Ionicons name="swap-vertical" size={styles.icon18.fontSize} color="#0B1220" />
+            <Ionicons
+              name="swap-vertical"
+              size={styles.icon18.fontSize}
+              color="#0B1220"
+            />
             <Text style={styles.bottomText}>Sort</Text>
           </Pressable>
           <View style={styles.bottomDivider} />
           <Pressable
             style={[styles.bottomBtn, styles.bottomBtnRight]}
-            onPress={() => router.push({
-              pathname: "../(screen)/FilterScreen",
-              params: {
-                currentMaxDistanceKm: filters.maxDistanceKm?.toString() ?? "",
-                currentMinPrice: filters.minPrice?.toString() ?? "",
-                currentMaxPrice: filters.maxPrice?.toString() ?? "",
-                currentOnlyDiscounted: String(filters.onlyDiscounted),
-              },
-            })}
+            onPress={() =>
+              router.push({
+                pathname: "../(screen)/FilterScreen",
+                params: {
+                  currentMaxDistanceKm: filters.maxDistanceKm?.toString() ?? "",
+                  currentMinPrice: filters.minPrice?.toString() ?? "",
+                  currentMaxPrice: filters.maxPrice?.toString() ?? "",
+                  currentOnlyDiscounted: String(filters.onlyDiscounted),
+                },
+              })
+            }
           >
-            <Ionicons name="options-outline" size={styles.icon18.fontSize} color="#0B1220" />
+            <Ionicons
+              name="options-outline"
+              size={styles.icon18.fontSize}
+              color="#0B1220"
+            />
             <Text style={styles.bottomText}>Filter</Text>
           </Pressable>
         </View>
+
+        {/* Transparent Bottom Safe Area */}
+        <View style={styles.bottomSafeArea} />
       </SafeAreaView>
     </View>
   );
 }
 
-
-// === STYLES (Same as before) ===
+// === UPDATED STYLES ===
 const createStyles = (width: number, height: number) => {
   const s = (size: number) => scale(size, width);
   const vs = (size: number) => verticalScale(size, height);
-  const ms = (size: number, factor?: number) => moderateScale(size, factor, width);
+  const ms = (size: number, factor?: number) =>
+    moderateScale(size, factor, width);
 
   const gutter = s(14);
   const cardGap = s(12);
   const cardW = (width - gutter * 2 - cardGap) / 2;
   const radius = ms(12);
 
+  // Calculate header height based on content
+  const topBarHeight = vs(70); // Increased for better alignment
+  const tagContainerHeight = vs(50);
+  const headerTotalHeight = topBarHeight;
+
   return StyleSheet.create({
-    root: { flex: 1 },
-    safe: { flex: 1 },
-    
+    root: {
+      flex: 1,
+      backgroundColor: "#ffffff",
+    },
+    safe: {
+      flex: 1,
+    },
+
+    // Fixed Header Container
+    headerContainer: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 1000,
+      backgroundColor: "#ffffff",
+      paddingTop: Platform.select({
+        ios: 0,
+        android: StatusBar.currentHeight,
+        default: 0,
+      }),
+      elevation: 4,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+    },
+
     icon18: { fontSize: ms(18) },
     icon20: { fontSize: ms(20) },
     icon22: { fontSize: ms(22) },
     icon28: { fontSize: ms(28) },
 
-    // Top Bar
+    // Top Bar - Improved Alignment
     topBar: {
+      height: topBarHeight,
       paddingHorizontal: s(16),
-      paddingTop: Platform.select({ ios: vs(12), android: vs(20), default: vs(20) }),
-      paddingBottom: vs(15),
       flexDirection: "row",
       alignItems: "center",
-      gap: s(12),
+      justifyContent: "space-between",
     },
-    backBtn: { 
-      width: s(40), 
-      height: s(40), 
-      alignItems: "center", 
-      justifyContent: "center" 
+    backBtn: {
+      width: s(44),
+      height: s(44),
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: s(22),
+      backgroundColor: "#f8fafc",
     },
-    
+
     searchBar: {
       flex: 1,
       height: vs(50),
+      marginHorizontal: s(12),
       borderRadius: ms(25),
       flexDirection: "row",
       alignItems: "center",
@@ -434,12 +448,12 @@ const createStyles = (width: number, height: number) => {
       borderWidth: 1.5,
       borderColor: "#003EF920",
     },
-    searchPlaceholder: { 
-      flex: 1, 
+    searchPlaceholder: {
+      flex: 1,
       marginLeft: s(10),
-      fontSize: ms(15), 
-      color: "#00000060", 
-      fontWeight: "500" 
+      fontSize: ms(15),
+      color: "#00000060",
+      fontWeight: "500",
     },
     micDivider: {
       width: 1,
@@ -447,17 +461,24 @@ const createStyles = (width: number, height: number) => {
       backgroundColor: "#00000015",
       marginHorizontal: s(12),
     },
-    
-    sellBtn: { 
-      width: s(44), 
-      height: s(44), 
-      alignItems: "center", 
-      justifyContent: "center" 
+
+    sellBtn: {
+      width: s(44),
+      height: s(44),
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: s(22),
+      backgroundColor: "#f8fafc",
     },
-    sellBookImage: { width: s(32), height: s(32) },
+    sellBookImage: {
+      width: s(28),
+      height: s(28),
+      resizeMode: "contain",
+    },
 
     // Search Tag Chip Styles
     tagContainer: {
+      height: tagContainerHeight,
       paddingHorizontal: s(16),
       paddingBottom: vs(12),
       flexDirection: "row",
@@ -486,15 +507,28 @@ const createStyles = (width: number, height: number) => {
       color: "#64748B",
     },
 
-    // List
-    listContent: { paddingHorizontal: gutter, paddingBottom: vs(100) },
-    row: { justifyContent: "space-between", marginBottom: vs(12) },
+    // List Spacer for Fixed Header
+    listHeaderSpacer: {
+      height: headerTotalHeight,
+      marginTop: 10,
+    },
+
+    // List Content
+    listContent: {
+      paddingHorizontal: gutter,
+      paddingBottom: vs(100),
+    },
+    row: {
+      justifyContent: "space-between",
+      marginBottom: vs(12),
+    },
 
     // Empty State
     emptyContainer: {
       alignItems: "center",
       justifyContent: "center",
       paddingVertical: vs(80),
+      marginTop: vs(40),
     },
     emptyText: {
       fontSize: ms(18),
@@ -599,7 +633,7 @@ const createStyles = (width: number, height: number) => {
       position: "absolute",
       left: s(20),
       right: s(20),
-      bottom: vs(20),
+      bottom: vs(70), // Positioned above transparent safe area
       height: vs(50),
       borderRadius: ms(25),
       backgroundColor: "#fff",
@@ -612,31 +646,37 @@ const createStyles = (width: number, height: number) => {
       borderWidth: 1.5,
       borderColor: "#003EF920",
     },
-    bottomBtn: { 
-      flex: 1, 
-      height: "100%", 
-      flexDirection: "row", 
-      alignItems: "center", 
-      justifyContent: "center", 
-      gap: s(6) 
+    bottomBtn: {
+      flex: 1,
+      height: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: s(6),
     },
-    bottomBtnLeft: { 
-      borderTopLeftRadius: ms(25), 
-      borderBottomLeftRadius: ms(25) 
+    bottomBtnLeft: {
+      borderTopLeftRadius: ms(25),
+      borderBottomLeftRadius: ms(25),
     },
-    bottomBtnRight: { 
-      borderTopRightRadius: ms(25), 
-      borderBottomRightRadius: ms(25) 
+    bottomBtnRight: {
+      borderTopRightRadius: ms(25),
+      borderBottomRightRadius: ms(25),
     },
-    bottomDivider: { 
-      width: 1, 
-      height: "50%", 
-      backgroundColor: "#E2E8F0" 
+    bottomDivider: {
+      width: 1,
+      height: "50%",
+      backgroundColor: "#E2E8F0",
     },
-    bottomText: { 
-      fontSize: ms(13), 
-      fontWeight: "600", 
-      color: "#0F172A" 
+    bottomText: {
+      fontSize: ms(13),
+      fontWeight: "600",
+      color: "#0F172A",
+    },
+
+    // Transparent Bottom Safe Area
+    bottomSafeArea: {
+      height: Platform.OS === "ios" ? vs(20) : 0,
+      backgroundColor: "transparent",
     },
   });
 };

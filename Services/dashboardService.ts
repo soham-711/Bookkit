@@ -2,11 +2,11 @@ import { supabase } from "../Utils/supabase";
 import { LocationCoords } from "./locationService";
 
 /* ---------- BASE FUNCTION ---------- */
-async function fetchBooksByDistance(
+export async function fetchBooksByDistance(
   location: LocationCoords,
   minKm: number,
   maxKm: number,
-  limit: number
+  limit?: number
 ) {
   const { data, error } = await supabase.rpc("get_books_by_distance", {
     user_lat: location.latitude,
@@ -36,4 +36,4 @@ export const fetchBooksAroundYou = (location: LocationCoords) =>
 
 // 📍 11–30 km
 export const fetchExploreBooks = (location: LocationCoords) =>
-  fetchBooksByDistance(location, 11, 30, 6);
+  fetchBooksByDistance(location, 11, 30);
