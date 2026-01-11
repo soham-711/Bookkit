@@ -1,139 +1,50 @@
-import React, { useState, useRef } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Image,
-  FlatList,
-  useWindowDimensions,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  StyleSheet,
-  Linking,
-  Alert,
-} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { useSafeAreaInsets, EdgeInsets } from "react-native-safe-area-context";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  Image,
+  Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocationStore } from "../../Context/LocationContext";
+import { getBookById } from "../../Services/fetchedBookData";
+import { supabase } from "../../Utils/supabase";
+import { getCurrentUserId } from "../../Services/userIdProvider";
+import { useOrders } from "../../Context/OrdersContext";
 
 interface Book {
-  id: number;
-  title: string;
-  subject: string;
-  priceMrp: number;
-  priceNow: number;
-  image: string;
-  images?: string[];
-  distance?: string;
-}
-
-interface ProductDetails {
-  bookTitle: string;
-  category: string;
-  class: string;
-  subject: string;
-  authorName: string;
-  publisherName: string;
-  edition: string;
-  bookCondition: string;
-  writingMarked: "Yes" | "No";
-  pageMissingTorn: "Yes" | "No";
-}
-
-// Interface for Saved Locations
-interface SavedLocation {
   id: string;
   title: string;
-  address: string;
-  type: "home" | "work" | "education" | "other";
+  user_id: string;
+  subject: string;
+  category: string;
+  class: string;
+  authorname: string;
+  publisher: string;
+  edition: string;
+  condition: string;
+  condition_description: string;
+  writing_marking: string;
+  pages_missing: string;
+  original_price: number;
+  generated_price: number;
+  images: string[];
+  pickup_address_text: string;
+  pickup_latitude: number;
+  pickup_longitude: number;
 }
-
-const books: Book[] = [
-  {
-    id: 1,
-    title: "NCERT Mathematics Textbook for Class XI Edition 2024",
-    subject: "Mathematics",
-    priceMrp: 2000,
-    priceNow: 1200,
-    image: "https://ncert.nic.in/textbook/pdf/jemh1cc.jpg",
-    images: [
-      "https://ncert.nic.in/textbook/pdf/jemh1cc.jpg",
-      "https://ncert.nic.in/textbook/pdf/kech1cc.jpg",
-      "https://ncert.nic.in/textbook/pdf/jemh1cc.jpg",
-    ],
-  },
-  {
-    id: 2,
-    title: "NCERT Chemistry Part I Textbook for Class XI Edition 2024",
-    subject: "Chemistry",
-    priceMrp: 1800,
-    priceNow: 855,
-    image: "https://ncert.nic.in/textbook/pdf/kech1cc.jpg",
-    distance: "25 km",
-  },
-  {
-    id: 3,
-    title: "General English Textbook for All Exams Edition 2024",
-    subject: "English",
-    priceMrp: 1300,
-    priceNow: 1500,
-    image: "https://ncert.nic.in/textbook/pdf/jehe1cc.jpg",
-    distance: "15 km",
-  },
-  {
-    id: 4,
-    title: "NCERT Science Textbook for Class XI Edition 2024",
-    subject: "Science",
-    priceMrp: 1500,
-    priceNow: 1000,
-    image: "https://ncert.nic.in/textbook/pdf/jesc1cc.jpg",
-    distance: "2 km",
-  },
-];
-
-const productDetailsData: ProductDetails = {
-  bookTitle: "NCERT Mathematics Textbook for Class XI",
-  category: "Academic Textbook",
-  class: "Class 11",
-  subject: "Mathematics",
-  authorName: "NCERT Board",
-  publisherName: "National Council of Educational Research and Training",
-  edition: "2024 Revised Edition",
-  bookCondition: "Good - Minor wear on cover, pages intact",
-  writingMarked: "No",
-  pageMissingTorn: "No",
-};
-
-// Mock Data for Saved Locations
-const savedLocationsData: SavedLocation[] = [
-  {
-    id: "1",
-    title: "Home",
-    address: "Action Area I 1/2, Newtown, New Town, Cha DG Black(Newtown) uttar 24 pargana West Bengal 74.....",
-    type: "home",
-  },
-  {
-    id: "2",
-    title: "Work",
-    address: "Salt Lake Sector V, Bidhannagar, Kolkata, West Bengal 700091",
-    type: "work",
-  },
-  {
-    id: "3",
-    title: "College",
-    address: "JIS University, Agarpara, Kolkata, West Bengal 700109",
-    type: "education",
-  },
-  {
-    id: "4",
-    title: "Friend's Place",
-    address: "Park Street Area, Kolkata, West Bengal 700016",
-    type: "other",
-  },
-];
 
 const scale = (size: number, width: number) => (width / 375) * size;
 const verticalScale = (size: number, height: number) => (height / 812) * size;
@@ -141,28 +52,71 @@ const moderateScale = (size: number, factor: number = 0.5, width: number) =>
   size + (scale(size, width) - size) * factor;
 
 const Disclosure = () => {
+  const { bookId, distance } = useLocalSearchParams<{
+    bookId: string;
+    distance: string;
+  }>();
+  const { savedAddresses } = useLocationStore();
+const { refreshOrders } = useOrders();
+
+  const [book, setBook] = useState<Book | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<any>(null);
+
+  useEffect(() => {
+    if (!savedAddresses || savedAddresses.length === 0) return;
+
+    const defaultAddr =
+      savedAddresses.find((addr) => addr.is_default) || savedAddresses[0];
+
+    setSelectedAddress(defaultAddr);
+    setLocation(defaultAddr.address);
+
+    console.log("Default selected address:", defaultAddr);
+  }, [savedAddresses]);
+
+  useEffect(() => {
+    if (!bookId) return;
+
+    const fetchBook = async () => {
+      try {
+        setLoading(true);
+
+        const data = await getBookById(bookId);
+
+        setBook(data);
+      } catch (e) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBook();
+  }, [bookId]);
+
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const IMAGE_HEIGHT = SCREEN_HEIGHT * 0.35;
 
-  const [location, setLocation] = useState<string>(
-    "Action Area I, 1/2, Newtown, New Town, Cha..."
-  );
-  
-  const [isLocationUpdateExpanded, setIsLocationUpdateExpanded] = useState<boolean>(false);
+  const [location, setLocation] = useState<string>("Fetching location....");
+
+  const [isLocationUpdateExpanded, setIsLocationUpdateExpanded] =
+    useState<boolean>(false);
 
   const [isDisclosureOpen, setIsDisclosureOpen] = useState<boolean>(false);
   const [isBuyNowExpanded, setIsBuyNowExpanded] = useState<boolean>(false);
-  const [isProductDetailsOpen, setIsProductDetailsOpen] = useState<boolean>(false);
+  const [isProductDetailsOpen, setIsProductDetailsOpen] =
+    useState<boolean>(false);
 
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [isBuying, setIsBuying] = useState<boolean>(false);
   const [isTitleExpanded, setIsTitleExpanded] = useState<boolean>(false);
   const flatListRef = useRef<FlatList>(null);
 
-  const featuredBook = books[0];
-  const gridBooks = books.slice(1);
-  const productImages = featuredBook.images || [featuredBook.image];
+  const productImages = book?.images ?? [];
 
   const styles = createStyles(SCREEN_WIDTH, SCREEN_HEIGHT, insets);
 
@@ -181,26 +135,38 @@ const Disclosure = () => {
   };
 
   const handleOpenMap = async () => {
-    const sellerLocation = "Action Area I, New Town, Kolkata";
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      sellerLocation
-    )}`;
+    if (!book?.pickup_latitude || !book?.pickup_longitude) {
+      Alert.alert("Location not available");
+      return;
+    }
+
+    const latitude = book.pickup_latitude;
+    const longitude = book.pickup_longitude;
+    const label = book.pickup_address_text || "Seller Location";
+
+    // Google Maps URL (works on Android + iOS + Web)
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+
     try {
-      const supported = await Linking.canOpenURL(url);
+      const supported = await Linking.canOpenURL(googleMapsUrl);
       if (supported) {
-        await Linking.openURL(url);
+        await Linking.openURL(googleMapsUrl);
       } else {
         Alert.alert("Error", "Unable to open map application");
       }
     } catch (error) {
-      console.error("An error occurred", error);
+      console.error("Map open error:", error);
+      Alert.alert("Error", "Something went wrong while opening map");
     }
   };
 
   // --- FIXED: Close the update section when a location is selected ---
-  const handleSelectLocation = (selectedAddress: string) => {
-    setLocation(selectedAddress);
-    setIsLocationUpdateExpanded(false); // <--- Add this line to close the dropdown
+  const handleSelectLocation = (addressObj: any) => {
+    setSelectedAddress(addressObj);
+    setLocation(addressObj.address);
+    setIsLocationUpdateExpanded(false);
+
+    console.log("User selected address:", addressObj);
   };
 
   const getLocationIcon = (type: string) => {
@@ -209,10 +175,8 @@ const Disclosure = () => {
         return "home";
       case "work":
         return "briefcase";
-      case "education":
-        return "school";
       default:
-        return "people";
+        return "location";
     }
   };
 
@@ -231,21 +195,73 @@ const Disclosure = () => {
     </View>
   );
 
-  const handleBuy = () => {
-    setIsBuying(true);
-    setTimeout(() => {
-      setIsBuying(false);
-      router.push({
-        pathname: "/(screen)/OrderDetailsScreen",
-        params: {
-          bookTitle: featuredBook.title,
-          bookPrice: featuredBook.priceNow.toString(),
-          bookImage: featuredBook.image,
-          orderStatus: "Processing",
-          orderDate: new Date().toISOString(),
-        },
+  // const handleBuy = () => {
+  //   setIsBuying(true);
+  //   setTimeout(() => {
+  //     setIsBuying(false);
+  //     if (!book) return;
+
+  //     router.push({
+  //       pathname: "/(screen)/OrderDetailsScreen",
+  //       params: {
+  //         bookTitle: book.title,
+  //         bookPrice: book.generated_price.toString(),
+  //         bookImage: book.images?.[0],
+  //         orderStatus: "Processing",
+  //         orderDate: new Date().toISOString(),
+  //       },
+  //     });
+  //   }, 2000);
+  // };
+
+  const handleBuy = async () => {
+    if (!book || !selectedAddress) {
+      Alert.alert("Error", "Book or address missing");
+      return;
+    }
+
+    try {
+      setIsBuying(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        Alert.alert("Login required");
+        return;
+      }
+
+      const { error } = await supabase.from("orders").insert({
+        book_id: book.id,
+        seller_id: book.user_id, // MUST exist in book table
+        buyer_id: user.id,
+
+        book_title: book.title,
+        book_image: book.images?.[0],
+        book_price: book.generated_price,
+
+        seller_address: book.pickup_address_text,
+        seller_lat: book.pickup_latitude,
+        seller_lng: book.pickup_longitude,
+
+        buyer_address: selectedAddress.address,
+        buyer_lat: selectedAddress.latitude,
+        buyer_lng: selectedAddress.longitude,
+
+        distance_km: Number(distance),
+        status: "pending",
       });
-    }, 2000);
+
+      if (error) throw error;
+    // ✅ IMPORTANT: refresh orders BEFORE navigation
+    await refreshOrders();
+      router.push("/(screen)/OrdersScreen");
+    } catch (err: any) {
+      Alert.alert("Order failed", err.message);
+    } finally {
+      setIsBuying(false);
+    }
   };
 
   return (
@@ -273,8 +289,8 @@ const Disclosure = () => {
               />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search books, authors, subjects"
-                defaultValue="books near me"
+                placeholder="Search books, authors ...."
+                onFocus={() => router.push("/(screen)/SearchScreen")}
                 placeholderTextColor="#00000060"
               />
             </View>
@@ -306,7 +322,7 @@ const Disclosure = () => {
                     color="#fff"
                     style={{ marginRight: scale(4, SCREEN_WIDTH) }}
                   />
-                  <Text style={styles.distanceBadgeText}>2.5 km</Text>
+                  <Text style={styles.distanceBadgeText}>{distance} km</Text>
                 </View>
 
                 <View style={styles.imageCounter}>
@@ -336,11 +352,10 @@ const Disclosure = () => {
                 <TouchableOpacity activeOpacity={0.7} onPress={toggleTitle}>
                   <Text style={styles.productTitle}>
                     {isTitleExpanded
-                      ? "NCERT Mathematics Textbook for Class XI Edition 2024 (English Medium)"
-                      : "NCERT Mathematics Textbook for Class XI Edition 2024 (Engli..."}
-                    {" "}
+                      ? book?.title
+                      : book?.title.slice(0, 60) + "..."}
                     <Text style={styles.moreText}>
-                      {isTitleExpanded ? "less" : "more"}
+                      {isTitleExpanded ? " less" : " more"}
                     </Text>
                   </Text>
                 </TouchableOpacity>
@@ -352,10 +367,14 @@ const Disclosure = () => {
                 </View>
 
                 <View style={styles.priceRow}>
-                  <Text style={styles.originalPrice}>₹2,000</Text>
+                  <Text style={styles.originalPrice}>
+                    ₹{book?.original_price}
+                  </Text>
                   <View style={styles.currentPriceContainer}>
                     <Text style={styles.nowAtText}>Now at</Text>
-                    <Text style={styles.currentPrice}>₹1,200</Text>
+                    <Text style={styles.currentPrice}>
+                      ₹{book?.generated_price}
+                    </Text>
                   </View>
                 </View>
 
@@ -370,7 +389,9 @@ const Disclosure = () => {
                     style={styles.buyNowButton}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.buyNowText}>Buy Now at ₹1,200</Text>
+                    <Text style={styles.buyNowText}>
+                      Buy Now at ₹{book?.generated_price}
+                    </Text>
                     <Ionicons
                       name="chevron-down"
                       size={scale(22, SCREEN_WIDTH)}
@@ -397,11 +418,8 @@ const Disclosure = () => {
                           style={styles.locationIcon}
                         />
                         <View style={styles.locationTextContainer}>
-                          <Text style={styles.locationTitle}>
-                            Newtown, Kolkata
-                          </Text>
                           <Text style={styles.locationSubtitle}>
-                            Action Area I, New Town - 2.5 km away
+                            {book?.pickup_address_text} - {distance} km away
                           </Text>
                         </View>
                       </View>
@@ -446,11 +464,9 @@ const Disclosure = () => {
               </View>
             </View>
 
-            {/* Your Current Location Section */}
+            {/* Your Location Section */}
             <View style={styles.currentLocationSection}>
-              <Text style={styles.currentLocationTitle}>
-                Your Current Location
-              </Text>
+              <Text style={styles.currentLocationTitle}>Your Location</Text>
 
               {/* Current Location Display - Top Part */}
               <LinearGradient
@@ -458,12 +474,12 @@ const Disclosure = () => {
                 start={{ x: 0, y: 1 }}
                 end={{ x: 0, y: 0 }}
                 style={[
-                    styles.locationDisplayGradient,
-                    isLocationUpdateExpanded && { 
-                        borderBottomLeftRadius: 0, 
-                        borderBottomRightRadius: 0,
-                        borderBottomWidth: 0,
-                    }
+                  styles.locationDisplayGradient,
+                  isLocationUpdateExpanded && {
+                    borderBottomLeftRadius: 0,
+                    borderBottomRightRadius: 0,
+                    borderBottomWidth: 0,
+                  },
                 ]}
               >
                 <Ionicons
@@ -472,67 +488,97 @@ const Disclosure = () => {
                   color="#0066ff"
                 />
                 <Text style={styles.locationDisplayText} numberOfLines={1}>
-                  {location}
+                  {selectedAddress?.address || "Select your location"}
                 </Text>
               </LinearGradient>
 
               {/* --- EXPANDABLE CONTENT IN BETWEEN --- */}
               {isLocationUpdateExpanded && (
-                  <View style={styles.savedLocationContainer}>
-                      <View style={styles.savedLocationHeader}>
-                          <Text style={styles.savedLocationTitle}>Select Location</Text>
-                          <TouchableOpacity onPress={() => setIsLocationUpdateExpanded(false)}>
-                            <Ionicons name="close" size={scale(24, SCREEN_WIDTH)} color="#333" />
-                          </TouchableOpacity>
-                      </View>
-
-                      <TouchableOpacity 
-                        style={styles.chooseOnMapCard}
-                        activeOpacity={0.8}
-                        onPress={handleOpenMap}
-                      >
-                          <View style={styles.mapIconCircle}>
-                            <Ionicons name="map" size={scale(24, SCREEN_WIDTH)} color="#0066ff" />
-                          </View>
-                          <View style={styles.mapCardContent}>
-                              <Text style={styles.mapCardTitle}>Choose on Map</Text>
-                              <Text style={styles.mapCardSubtitle}>Select your location by moving the map</Text>
-                          </View>
-                          <Ionicons name="chevron-forward" size={scale(20, SCREEN_WIDTH)} color="#999" />
-                      </TouchableOpacity>
-
-                      <View style={styles.savedDividerContainer}>
-                          <View style={styles.savedDividerLine} />
-                          <Text style={styles.savedDividerText}>OR SELECT FROM SAVED</Text>
-                          <View style={styles.savedDividerLine} />
-                      </View>
-
-                      <View style={styles.savedListContainer}>
-                          {savedLocationsData.map((loc, index) => (
-                              <TouchableOpacity 
-                                key={loc.id} 
-                                style={[
-                                    styles.savedListItem,
-                                    index === savedLocationsData.length - 1 && { borderBottomWidth: 0 }
-                                ]}
-                                onPress={() => handleSelectLocation(loc.address)}
-                              >
-                                  <View style={styles.savedIconContainer}>
-                                      <Ionicons 
-                                        name={getLocationIcon(loc.type) as any} 
-                                        size={scale(20, SCREEN_WIDTH)} 
-                                        color="#008080" 
-                                      />
-                                  </View>
-                                  <View style={styles.savedTextContainer}>
-                                      <Text style={styles.savedItemTitle}>{loc.title}</Text>
-                                      <Text style={styles.savedItemAddress} numberOfLines={2}>{loc.address}</Text>
-                                  </View>
-                                  <Ionicons name="chevron-forward" size={scale(20, SCREEN_WIDTH)} color="#ccc" />
-                              </TouchableOpacity>
-                          ))}
-                      </View>
+                <View style={styles.savedLocationContainer}>
+                  <View style={styles.savedLocationHeader}>
+                    <Text style={styles.savedLocationTitle}>
+                      Select Location
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setIsLocationUpdateExpanded(false)}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={scale(24, SCREEN_WIDTH)}
+                        color="#333"
+                      />
+                    </TouchableOpacity>
                   </View>
+
+                  <TouchableOpacity
+                    style={styles.chooseOnMapCard}
+                    activeOpacity={0.8}
+                    onPress={() => router.push("/(screen)/UserCurrentLocation")}
+                  >
+                    <View style={styles.mapIconCircle}>
+                      <Ionicons
+                        name="map"
+                        size={scale(24, SCREEN_WIDTH)}
+                        color="#0066ff"
+                      />
+                    </View>
+                    <View style={styles.mapCardContent}>
+                      <Text style={styles.mapCardTitle}>Choose on Map</Text>
+                      <Text style={styles.mapCardSubtitle}>
+                        Select your location by moving the map
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={scale(20, SCREEN_WIDTH)}
+                      color="#999"
+                    />
+                  </TouchableOpacity>
+
+                  <View style={styles.savedDividerContainer}>
+                    <View style={styles.savedDividerLine} />
+                    <Text style={styles.savedDividerText}>
+                      OR SELECT FROM SAVED
+                    </Text>
+                    <View style={styles.savedDividerLine} />
+                  </View>
+
+                  <View style={styles.savedListContainer}>
+                    {savedAddresses.map((loc, index) => (
+                      <TouchableOpacity
+                        key={loc.id}
+                        style={[
+                          styles.savedListItem,
+                          index === savedAddresses.length - 1 && {
+                            borderBottomWidth: 0,
+                          },
+                        ]}
+                        onPress={() => handleSelectLocation(loc)}
+                      >
+                        <View style={styles.savedIconContainer}>
+                          <Ionicons
+                            name={getLocationIcon(loc.label) as any}
+                            size={scale(20, SCREEN_WIDTH)}
+                            color="#008080"
+                          />
+                        </View>
+                        <View style={styles.savedTextContainer}>
+                          <Text
+                            style={styles.savedItemAddress}
+                            numberOfLines={2}
+                          >
+                            {loc.address}
+                          </Text>
+                        </View>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={scale(20, SCREEN_WIDTH)}
+                          color="#ccc"
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               )}
 
               {/* Update Location Button - Bottom Part */}
@@ -541,31 +587,37 @@ const Disclosure = () => {
                 start={{ x: 0, y: 1 }}
                 end={{ x: 0, y: 0 }}
                 style={[
-                    styles.updateLocationGradient,
-                    isLocationUpdateExpanded && { 
-                        borderTopLeftRadius: 0, 
-                        borderTopRightRadius: 0,
-                        borderTopWidth: 0,
-                        marginTop: 0,
-                    }
+                  styles.updateLocationGradient,
+                  isLocationUpdateExpanded && {
+                    borderTopLeftRadius: 0,
+                    borderTopRightRadius: 0,
+                    borderTopWidth: 0,
+                    marginTop: 0,
+                  },
                 ]}
               >
                 <TouchableOpacity
                   style={styles.updateLocationButton}
                   activeOpacity={0.8}
-                  onPress={() => setIsLocationUpdateExpanded(!isLocationUpdateExpanded)}
+                  onPress={() =>
+                    setIsLocationUpdateExpanded(!isLocationUpdateExpanded)
+                  }
                 >
                   <Text style={styles.updateLocationText}>
-                      {isLocationUpdateExpanded ? "Close" : "Update Location"}
+                    {isLocationUpdateExpanded ? "Close" : "Update Location"}
                   </Text>
-                  <Ionicons 
-                    name="chevron-down" 
-                    size={scale(16, SCREEN_WIDTH)} 
+                  <Ionicons
+                    name="chevron-down"
+                    size={scale(16, SCREEN_WIDTH)}
                     color="#000"
                     style={{
-                        marginLeft: scale(5, SCREEN_WIDTH),
-                        transform: [{ rotate: isLocationUpdateExpanded ? "180deg" : "0deg" }]
-                    }} 
+                      marginLeft: scale(5, SCREEN_WIDTH),
+                      transform: [
+                        {
+                          rotate: isLocationUpdateExpanded ? "180deg" : "0deg",
+                        },
+                      ],
+                    }}
                   />
                 </TouchableOpacity>
               </LinearGradient>
@@ -602,50 +654,40 @@ const Disclosure = () => {
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Book Title:</Text>
                       <Text style={styles.detailValue} numberOfLines={2}>
-                        {productDetailsData.bookTitle}
+                        {book?.title}
                       </Text>
                     </View>
 
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Category:</Text>
-                      <Text style={styles.detailValue}>
-                        {productDetailsData.category}
-                      </Text>
+                      <Text style={styles.detailValue}>{book?.category}</Text>
                     </View>
 
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Class:</Text>
-                      <Text style={styles.detailValue}>
-                        {productDetailsData.class}
-                      </Text>
+                      <Text style={styles.detailValue}>{book?.class}</Text>
                     </View>
 
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Subject:</Text>
-                      <Text style={styles.detailValue}>
-                        {productDetailsData.subject}
-                      </Text>
+                      <Text style={styles.detailValue}>{book?.subject}</Text>
                     </View>
 
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Author Name:</Text>
-                      <Text style={styles.detailValue}>
-                        {productDetailsData.authorName}
-                      </Text>
+                      <Text style={styles.detailValue}>{book?.authorname}</Text>
                     </View>
 
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Publisher:</Text>
                       <Text style={styles.detailValue} numberOfLines={2}>
-                        {productDetailsData.publisherName}
+                        {book?.publisher}
                       </Text>
                     </View>
 
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Edition:</Text>
-                      <Text style={styles.detailValue}>
-                        {productDetailsData.edition}
-                      </Text>
+                      <Text style={styles.detailValue}>{book?.edition}</Text>
                     </View>
                   </View>
 
@@ -656,9 +698,7 @@ const Disclosure = () => {
 
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Condition:</Text>
-                      <Text style={styles.detailValue}>
-                        {productDetailsData.bookCondition}
-                      </Text>
+                      <Text style={styles.detailValue}>{book?.condition}</Text>
                     </View>
 
                     <View style={styles.detailRow}>
@@ -668,20 +708,20 @@ const Disclosure = () => {
                       <View
                         style={[
                           styles.statusBadge,
-                          productDetailsData.writingMarked === "Yes"
-                            ? styles.statusBadgeYes
-                            : styles.statusBadgeNo,
+                          book?.writing_marking === "None"
+                            ? styles.statusBadgeNo
+                            : styles.statusBadgeYes,
                         ]}
                       >
                         <Text
                           style={[
                             styles.statusBadgeText,
-                            productDetailsData.writingMarked === "Yes"
-                              ? { color: "#d32f2f" }
-                              : { color: "#2e7d32" },
+                            book?.writing_marking === "None"
+                              ? { color: "#2e7d32" } // green
+                              : { color: "#d32f2f" }, // red
                           ]}
                         >
-                          {productDetailsData.writingMarked}
+                          {book?.writing_marking === "None" ? "No" : "Yes"}
                         </Text>
                       </View>
                     </View>
@@ -693,7 +733,7 @@ const Disclosure = () => {
                       <View
                         style={[
                           styles.statusBadge,
-                          productDetailsData.pageMissingTorn === "Yes"
+                          book?.pages_missing === "Yes"
                             ? styles.statusBadgeYes
                             : styles.statusBadgeNo,
                         ]}
@@ -701,12 +741,14 @@ const Disclosure = () => {
                         <Text
                           style={[
                             styles.statusBadgeText,
-                            productDetailsData.pageMissingTorn === "Yes"
+                            book?.pages_missing === "Yes"
                               ? { color: "#d32f2f" }
                               : { color: "#2e7d32" },
                           ]}
                         >
-                          {productDetailsData.pageMissingTorn}
+                          {book?.pages_missing === "None - All pages intact"
+                            ? "No"
+                            : "Yes"}
                         </Text>
                       </View>
                     </View>
@@ -743,15 +785,13 @@ const Disclosure = () => {
                     • Buyer must inspect the book condition before purchase.
                   </Text>
                   <Text style={styles.termItem}>
-                    • No returns or refunds after the transaction is
-                    complete.
+                    • No returns or refunds after the transaction is complete.
                   </Text>
                   <Text style={styles.termItem}>
                     • Meet at a safe public location for the exchange.
                   </Text>
                   <Text style={styles.termItem}>
-                    • Seller is responsible for the accuracy of book
-                    details.
+                    • Seller is responsible for the accuracy of book details.
                   </Text>
                 </View>
               )}
@@ -760,54 +800,7 @@ const Disclosure = () => {
             <View style={styles.divider} />
             <Text style={styles.suggestedTitle}>suggested books</Text>
 
-            <View style={styles.gridContainer}>
-              {gridBooks.map((book) => (
-                <TouchableOpacity
-                  key={book.id}
-                  style={styles.gridCard}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.gridImageContainer}>
-                    {book.distance && (
-                      <View style={styles.gridDistanceBadge}>
-                        <Ionicons
-                          name="location-sharp"
-                          size={scale(8, SCREEN_WIDTH)}
-                          color="#fff"
-                          style={{ marginRight: scale(3, SCREEN_WIDTH) }}
-                        />
-                        <Text style={styles.gridDistanceBadgeText}>
-                          {book.distance}
-                        </Text>
-                      </View>
-                    )}
-                    <Image
-                      source={{ uri: book.image }}
-                      style={styles.gridImage}
-                      resizeMode="contain"
-                    />
-                  </View>
-
-                  <View style={styles.gridDetails}>
-                    <Text numberOfLines={2} style={styles.gridTitle}>
-                      {book.title}
-                    </Text>
-
-                    <View style={styles.gridPriceRow}>
-                      <Text style={styles.gridOriginalPrice}>
-                        ₹{book.priceMrp.toLocaleString()}
-                      </Text>
-                      <View style={styles.gridCurrentPriceContainer}>
-                        <Text style={styles.gridNowAtText}>Now at</Text>
-                        <Text style={styles.gridCurrentPrice}>
-                          ₹{book.priceNow.toLocaleString()}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {/* <SuggestedBooksCart/> */}
           </ScrollView>
 
           <View style={styles.fixedBottomContainer}>
@@ -822,7 +815,7 @@ const Disclosure = () => {
                 activeOpacity={0.8}
                 style={styles.fixedBuyButtonTouchable}
               >
-                <Text style={styles.fixedBuyButtonText}>Buy at ₹1,200</Text>
+                <Text style={styles.fixedBuyButtonText}>Buy at ₹{book?.generated_price}</Text>
               </TouchableOpacity>
             </LinearGradient>
           </View>
@@ -831,7 +824,7 @@ const Disclosure = () => {
             <View style={styles.loadingOverlay}>
               <View style={styles.loadingCard}>
                 <Image
-                  source={require('../../assets/images/loading.gif')}
+                  source={require("../../assets/images/loading.gif")}
                   style={styles.loadingGif}
                   resizeMode="contain"
                 />
@@ -859,8 +852,8 @@ const createStyles = (width: number, height: number, insets: EdgeInsets) => {
       flex: 1,
       backgroundColor: "transparent",
     },
-    safeArea: { 
-        flex: 1,
+    safeArea: {
+      flex: 1,
     },
     header: {
       paddingVertical: vs(15),
@@ -871,9 +864,9 @@ const createStyles = (width: number, height: number, insets: EdgeInsets) => {
       backgroundColor: "transparent",
       paddingHorizontal: gutter,
     },
-    backButton: { 
-        padding: s(4),
-        paddingBottom: s(8),
+    backButton: {
+      padding: s(4),
+      paddingBottom: s(8),
     },
     searchBar: {
       flex: 1,
@@ -916,7 +909,7 @@ const createStyles = (width: number, height: number, insets: EdgeInsets) => {
     sellIcon: { width: s(24), height: s(24) },
     scrollView: { flex: 1 },
     scrollContent: {
-      paddingBottom: vs(80) + insets.bottom + 20, 
+      paddingBottom: vs(80) + insets.bottom + 20,
     },
     carouselContainer: { position: "relative" },
     distanceBadge: {
@@ -1187,7 +1180,7 @@ const createStyles = (width: number, height: number, insets: EdgeInsets) => {
     },
     updateLocationButton: {
       flex: 1,
-      flexDirection: 'row',
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -1196,110 +1189,110 @@ const createStyles = (width: number, height: number, insets: EdgeInsets) => {
       fontSize: ms(15),
       fontWeight: "600",
     },
-    
+
     savedLocationContainer: {
-        backgroundColor: '#fff',
-        padding: s(16),
-        borderLeftWidth: 1,
-        borderRightWidth: 1,
-        borderColor: '#63a2ef',
+      backgroundColor: "#fff",
+      padding: s(16),
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: "#63a2ef",
     },
     savedLocationHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: vs(20)
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: vs(20),
     },
     savedLocationTitle: {
-        fontSize: ms(18),
-        fontWeight: '700',
-        color: '#222'
+      fontSize: ms(18),
+      fontWeight: "700",
+      color: "#222",
     },
     chooseOnMapCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#e0f7fa',
-        padding: s(12),
-        borderRadius: ms(10),
-        borderWidth: 1,
-        borderColor: '#b2ebf2',
-        marginBottom: vs(20)
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "#e0f7fa",
+      padding: s(12),
+      borderRadius: ms(10),
+      borderWidth: 1,
+      borderColor: "#b2ebf2",
+      marginBottom: vs(20),
     },
     mapIconCircle: {
-        width: s(40),
-        height: s(40),
-        borderRadius: s(20),
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: s(12)
+      width: s(40),
+      height: s(40),
+      borderRadius: s(20),
+      backgroundColor: "#fff",
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: s(12),
     },
     mapCardContent: {
-        flex: 1
+      flex: 1,
     },
     mapCardTitle: {
-        fontSize: ms(14),
-        fontWeight: '700',
-        color: '#006064',
-        marginBottom: vs(2)
+      fontSize: ms(14),
+      fontWeight: "700",
+      color: "#006064",
+      marginBottom: vs(2),
     },
     mapCardSubtitle: {
-        fontSize: ms(11),
-        color: '#555',
+      fontSize: ms(11),
+      color: "#555",
     },
     savedDividerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: vs(20)
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: vs(20),
     },
     savedDividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: '#ddd'
+      flex: 1,
+      height: 1,
+      backgroundColor: "#ddd",
     },
     savedDividerText: {
-        marginHorizontal: s(10),
-        fontSize: ms(11),
-        color: '#999',
-        fontWeight: '600',
-        textTransform: 'uppercase'
+      marginHorizontal: s(10),
+      fontSize: ms(11),
+      color: "#999",
+      fontWeight: "600",
+      textTransform: "uppercase",
     },
     savedListContainer: {
-        backgroundColor: '#fff'
+      backgroundColor: "#fff",
     },
     savedListItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: vs(12),
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0'
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: vs(12),
+      borderBottomWidth: 1,
+      borderBottomColor: "#f0f0f0",
     },
     savedIconContainer: {
-        width: s(40),
-        height: s(40),
-        borderRadius: s(20),
-        backgroundColor: '#e0f2f1',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: s(12)
+      width: s(40),
+      height: s(40),
+      borderRadius: s(20),
+      backgroundColor: "#e0f2f1",
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: s(12),
     },
     savedTextContainer: {
-        flex: 1
+      flex: 1,
     },
     savedItemTitle: {
-        fontSize: ms(14),
-        fontWeight: '600',
-        color: '#222',
-        marginBottom: vs(2)
+      fontSize: ms(14),
+      fontWeight: "600",
+      color: "#222",
+      marginBottom: vs(2),
     },
     savedItemAddress: {
-        fontSize: ms(11),
-        color: '#666',
-        lineHeight: ms(16)
+      fontSize: ms(11),
+      color: "#666",
+      lineHeight: ms(16),
     },
-    
+
     fixedBottomContainer: {
-      position: 'absolute',
+      position: "absolute",
       bottom: 0,
       left: 0,
       right: 0,

@@ -223,7 +223,7 @@ const SearchScreen = () => {
     <>
       <StatusBar barStyle="dark-content" backgroundColor="#6FE9F0" />
       <LinearGradient
-        colors={["#6FE9F0", "#CFF7FA"]}
+        colors={["#ffffffff", "#aff6f6ff"]}
         style={styles.gradientContainer}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -454,7 +454,7 @@ const createStyles = (width: number, height: number, insets: any) => {
       marginHorizontal: s(16),
       marginTop: vs(12),
       marginBottom: vs(8),
-      backgroundColor: "#b9f8feff",
+      backgroundColor: "#f8ffffff",
       borderRadius: ms(24),
       paddingHorizontal: s(0),
       paddingVertical: vs(0),

@@ -49,7 +49,7 @@ export interface Order {
   created_at: string;
 }
 
-const OrderDetailsScreen = () => {
+const CancellScreen = () => {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
   const styles = createStyles(width, height);
@@ -172,8 +172,8 @@ const OrderDetailsScreen = () => {
           <View style={styles.statusCard}>
             <View style={styles.statusContent}>
               <Text style={styles.statusTitle}>
-                Please wait <Text style={styles.emoji}>😊</Text> Your order is
-                being confirmed by the seller.
+                Sorry!! <Text style={styles.emoji}>🙁</Text> Your order is being
+                cancelled by Seller.
               </Text>
 
               {/* Stepper */}
@@ -199,16 +199,14 @@ const OrderDetailsScreen = () => {
                 <View style={styles.stepContainer}>
                   <View style={styles.stepIconActiveWrapper}>
                     <Image
-                      source={require("../../assets/images/dot.gif")}
+                      source={require("../../assets/images/cross.gif")}
                       style={styles.dotIcon}
                       contentFit="contain"
                     />
                   </View>
-                  <Text style={styles.stepLabel}>Confirmation</Text>
+                  <Text style={styles.stepLabel}>Cancelled</Text>
                 </View>
               </View>
-
-              {/* Functional Demo: Expanded Updates */}
             </View>
           </View>
 
@@ -232,14 +230,13 @@ const OrderDetailsScreen = () => {
             {/* Cyan Share Banner */}
             <View style={styles.shareStrip}>
               <Text style={styles.shareText}>
-                Share your location and phone number with the seller to ensure
-                smooth communication <Text style={styles.emoji}>😊</Text>
+                The seller has cancelled this order, but there are many great
+                books waiting for you. Try finding another one{" "}
+                <Text style={styles.emoji}>😊📖</Text>
               </Text>
             </View>
 
-            <Text style={styles.subStatusText}>
-              Waiting for seller confirmation.
-            </Text>
+            <Text style={styles.subStatusText}>Your order is cancelled.</Text>
           </View>
 
           {/* ---------- Terms & Conditions (Collapsible) ---------- */}
@@ -261,6 +258,7 @@ const OrderDetailsScreen = () => {
               <View style={styles.termsBody}>
                 <View style={styles.bulletDot} />
                 <Text style={styles.termsText}>
+                  {" "}
                   Payment will be made hand to hand there.
                 </Text>
               </View>
@@ -272,7 +270,7 @@ const OrderDetailsScreen = () => {
   );
 };
 
-export default OrderDetailsScreen;
+export default CancellScreen;
 
 // ---------- Styles ----------
 const createStyles = (width: number, height: number) => {
@@ -434,7 +432,7 @@ const createStyles = (width: number, height: number) => {
       zIndex: 2,
     },
     dotIcon: {
-      width: s(52),
+      width: s(40),
       height: s(52),
     },
 
@@ -458,7 +456,7 @@ const createStyles = (width: number, height: number) => {
     progressLineFill: {
       width: "100%",
       height: vs(3),
-      backgroundColor: "#6ecc65ff",
+      backgroundColor: "rgb(204, 101, 101)",
       borderRadius: vs(2),
     },
 

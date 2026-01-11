@@ -245,6 +245,7 @@ const ProfileScreen = () => {
             <TouchableOpacity
               style={styles.actionButtonWrapper}
               activeOpacity={0.8}
+              onPress={()=>router.push("/(screen)/DeliverablesScreen")}
             >
               <LinearGradient
                 colors={["#22D3EE", "#06B6D4"]}

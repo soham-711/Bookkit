@@ -1,5 +1,6 @@
-import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { router } from "expo-router";
 import React from "react";
 import {
   StyleSheet,
@@ -9,8 +10,7 @@ import {
   View,
 } from "react-native";
 
-
- type Book = {
+type Book = {
   id: string;
 
   title: string;
@@ -41,20 +41,17 @@ type Props = {
   books: Book[];
 };
 
-
 // Scaling utilities (defined once, outside component)
-const scale = (size: number, width: number) =>
-  (width / 375) * size;
+const scale = (size: number, width: number) => (width / 375) * size;
 
-const verticalScale = (size: number, height: number) =>
-  (height / 812) * size;
+const verticalScale = (size: number, height: number) => (height / 812) * size;
 
 const moderateScale = (size: number, factor = 0.5, width: number) =>
   size + (scale(size, width) - size) * factor;
 
 // Sample data
 
-const SuggestedBooksCart: React.FC<Props> = ({ books }) =>{
+const SuggestedBooksCart: React.FC<Props> = ({ books }) => {
   const { width, height } = useWindowDimensions();
   const styles = createStyles(width, height);
 
@@ -70,8 +67,20 @@ const SuggestedBooksCart: React.FC<Props> = ({ books }) =>{
       </View>
 
       <View style={styles.suggestedGrid}>
-        {books.map((book) => (
-          <View key={book.id} style={styles.suggestedCard}>
+        {books.map((book, distance_km) => (
+          <TouchableOpacity
+            key={book.id}
+            style={styles.suggestedCard}
+            onPress={() =>
+              router.push({
+                pathname: "/(screen)/DiscloseScreen",
+                params: {
+                  bookId: book.id,
+                  distance: distance_km,
+                },
+              })
+            }
+          >
             <View style={styles.suggestedImageWrapper}>
               <Image
                 source={{ uri: book.images?.[0] }}
@@ -84,8 +93,10 @@ const SuggestedBooksCart: React.FC<Props> = ({ books }) =>{
               {book.title}
             </Text>
 
-            <Text style={styles.suggestedPriceText}>Now at ₹{book.original_price}</Text>
-          </View>
+            <Text style={styles.suggestedPriceText}>
+              Now at ₹{book.original_price}
+            </Text>
+          </TouchableOpacity>
         ))}
       </View>
 
@@ -108,7 +119,6 @@ const createStyles = (width: number, height: number) => {
   return StyleSheet.create({
     section: {
       marginTop: vs(20),
-      
     },
 
     sectionHeader: {

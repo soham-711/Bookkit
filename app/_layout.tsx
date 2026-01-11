@@ -112,6 +112,7 @@ import {
   reverseGeocode,
 } from "../Services/locationService";
 
+import { OrdersProvider } from "@/Context/OrdersContext";
 import { supabase } from "../Utils/supabase";
 
 /* ---------- LOCATION BOOTSTRAPPER ---------- */
@@ -201,13 +202,15 @@ export default function RootLayout() {
       <ProfileProvider>
         <LocationProvider>
           <DashboardProvider>
-            <UploadProvider>
-              {/* LOCATION INIT (runs once) */}
-              <LocationBootstrapper />
+            <OrdersProvider>
+              <UploadProvider>
+                {/* LOCATION INIT (runs once) */}
+                <LocationBootstrapper />
 
-              {/* NAVIGATION */}
-              <Stack screenOptions={{ headerShown: false }} />
-            </UploadProvider>
+                {/* NAVIGATION */}
+                <Stack screenOptions={{ headerShown: false }} />
+              </UploadProvider>
+            </OrdersProvider>
           </DashboardProvider>
         </LocationProvider>
       </ProfileProvider>

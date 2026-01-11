@@ -4,7 +4,7 @@ import { supabase } from "../Utils/supabase";
  * Returns current authenticated user's UID
  * @returns string | null
  */
-export const getCurrentUserId = async (): Promise<string | null> => {
+export const getCurrentUserId = async (): Promise<any | null> => {
   const {
     data: { user },
     error,

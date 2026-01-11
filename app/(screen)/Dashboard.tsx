@@ -153,6 +153,15 @@ const Dashboard = () => {
       key={item.book.id}
       style={styles.bookCard}
       activeOpacity={0.8}
+      onPress={() =>
+        router.push({
+          pathname: "/(screen)/DiscloseScreen",
+          params: {
+            bookId: item.book.id,
+            distance: item.distance_km,
+          },
+        })
+      }
     >
       <View style={styles.imageWrapper}>
         <View style={styles.distanceBadge}>

@@ -19,6 +19,7 @@ const moderateScale = (size: number, factor: number = 0.5, width: number) =>
   size + (scale(size, width) - size) * factor;
 
 // ---------- Mock data ----------
+// ---------- Mock data ----------
 export interface Order {
   id: string;
 
@@ -48,7 +49,6 @@ export interface Order {
 
   created_at: string;
 }
-
 const OrderDetailsScreen = () => {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
@@ -172,8 +172,8 @@ const OrderDetailsScreen = () => {
           <View style={styles.statusCard}>
             <View style={styles.statusContent}>
               <Text style={styles.statusTitle}>
-                Please wait <Text style={styles.emoji}>😊</Text> Your order is
-                being confirmed by the seller.
+                Delivered! <Text style={styles.emoji}>📦</Text> We hope you
+                enjoy reading. Explore more books anytime.
               </Text>
 
               {/* Stepper */}
@@ -199,17 +199,34 @@ const OrderDetailsScreen = () => {
                 <View style={styles.stepContainer}>
                   <View style={styles.stepIconActiveWrapper}>
                     <Image
-                      source={require("../../assets/images/dot.gif")}
+                      source={require("../../assets/images/green-tick.gif")}
                       style={styles.dotIcon}
                       contentFit="contain"
                     />
                   </View>
-                  <Text style={styles.stepLabel}>Confirmation</Text>
+                  <Text style={styles.stepLabel}>Confirmed</Text>
+                </View>
+
+                {/* Connecting Line */}
+                <View style={styles.progressLineWrapper}>
+                  <View style={styles.progressLineFill} />
+                </View>
+
+                {/* Step 3: Confirmation (Dot PNG) */}
+                <View style={styles.stepContainer}>
+                  <View style={styles.stepIconActiveWrapper}>
+                    <Image
+                      source={require("../../assets/images/green-tick.gif")}
+                      style={styles.dotIcon}
+                      contentFit="contain"
+                    />
+                  </View>
+                  <Text style={styles.stepLabel}>Delivered</Text>
                 </View>
               </View>
-
-              {/* Functional Demo: Expanded Updates */}
             </View>
+
+            {/* Footer Link */}
           </View>
 
           {/* ---------- Address Card ---------- */}
@@ -232,14 +249,12 @@ const OrderDetailsScreen = () => {
             {/* Cyan Share Banner */}
             <View style={styles.shareStrip}>
               <Text style={styles.shareText}>
-                Share your location and phone number with the seller to ensure
-                smooth communication <Text style={styles.emoji}>😊</Text>
+                Enjoy your book! Your order is delivered. Explore more books
+                anytime <Text style={styles.emoji}>📖✨</Text>
               </Text>
             </View>
 
-            <Text style={styles.subStatusText}>
-              Waiting for seller confirmation.
-            </Text>
+            <Text style={styles.subStatusText}>Your order is Delivered.</Text>
           </View>
 
           {/* ---------- Terms & Conditions (Collapsible) ---------- */}
@@ -434,7 +449,7 @@ const createStyles = (width: number, height: number) => {
       zIndex: 2,
     },
     dotIcon: {
-      width: s(52),
+      width: s(40),
       height: s(52),
     },
 
@@ -458,7 +473,7 @@ const createStyles = (width: number, height: number) => {
     progressLineFill: {
       width: "100%",
       height: vs(3),
-      backgroundColor: "#6ecc65ff",
+      backgroundColor: "rgb(101, 204, 123)",
       borderRadius: vs(2),
     },
 

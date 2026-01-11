@@ -158,7 +158,15 @@ export default function BookNearMeScreen() {
     return (
       <Pressable
         style={styles.bookCard}
-        onPress={() => router.push("/(screen)/DiscloseScreen")}
+        onPress={() =>
+          router.push({
+            pathname: '/(screen)/DiscloseScreen',
+            params: {
+              bookId: item.book.id,
+              distance: item.distance_km,
+            },
+          })
+        }
       >
         {/* Image Section */}
         <View style={styles.imageWrapper}>
@@ -168,7 +176,7 @@ export default function BookNearMeScreen() {
               size={scale(10, width)}
               color="#f90000ff"
             />
-            <Text style={styles.distanceText}>{item.distance_km}</Text>
+            <Text style={styles.distanceText}>{item.distance_km} km</Text>
           </View>
 
           <View style={styles.imagePlaceholder}>
@@ -290,7 +298,7 @@ export default function BookNearMeScreen() {
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <FlatList
           data={books}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => String(item.book.id)}
           renderItem={renderItem}
           numColumns={2}
           columnWrapperStyle={styles.row}
