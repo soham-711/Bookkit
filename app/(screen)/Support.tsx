@@ -11,9 +11,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { ArrowLeft, MoreVertical, Check, Send } from 'lucide-react-native';
+import { ArrowLeft, MoreVertical, Check, Send, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
@@ -31,15 +33,18 @@ interface Message {
   sender: 'user' | 'support';
   time: string;
   options?: string[];
+  isTyping?: boolean;
 }
 
 const SupportPage = () => {
   const { width, height } = useWindowDimensions();
+  const router = useRouter();
   const styles = useMemo(() => makeStyles(width, height), [width, height]);
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [showTextInput, setShowTextInput] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const scrollViewRef = React.useRef<ScrollView>(null);
 
   const orders: OrderItem[] = [
@@ -81,15 +86,17 @@ const SupportPage = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    setIsTyping(true);
 
     setTimeout(() => {
+      setIsTyping(false);
       const aiResponse = getOptionsForIssue(orderId);
       setMessages(prev => [...prev, aiResponse]);
       
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    }, 1000);
+    }, 1500);
   };
 
   const getOptionsForIssue = (issueType: string): Message => {
@@ -164,7 +171,6 @@ const SupportPage = () => {
           onPress: () => {
             setMessages([]);
             setShowTextInput(false);
-            // Scroll to top smoothly
             setTimeout(() => {
               scrollViewRef.current?.scrollTo({ y: 0, animated: true });
             }, 100);
@@ -175,7 +181,6 @@ const SupportPage = () => {
   };
 
   const handleOptionClick = (option: string) => {
-    // Check if user wants to close conversation
     if (option === 'Close conversation') {
       handleCloseConversation();
       return;
@@ -195,15 +200,17 @@ const SupportPage = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    setIsTyping(true);
 
     setTimeout(() => {
+      setIsTyping(false);
       const aiResponse = getResponseForOption(option);
       setMessages(prev => [...prev, aiResponse]);
       
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    }, 1000);
+    }, 1500);
   };
 
   const getResponseForOption = (option: string): Message => {
@@ -343,8 +350,10 @@ const SupportPage = () => {
     setMessages(prev => [...prev, newMessage]);
     setInputMessage('');
     setShowTextInput(false);
+    setIsTyping(true);
 
     setTimeout(() => {
+      setIsTyping(false);
       const supportResponse: Message = {
         id: (Date.now() + 1).toString(),
         text: 'Thank you for the information. Our support team will review this and get back to you shortly.',
@@ -366,64 +375,78 @@ const SupportPage = () => {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    }, 1000);
+    }, 1500);
   };
 
   const handleBack = () => {
     if (messages.length > 0) {
       Alert.alert(
-        'Clear Chat',
-        'Are you sure you want to clear this conversation?',
+        'Leave Chat',
+        'Are you sure you want to leave this conversation?',
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Clear',
+            text: 'Leave',
             style: 'destructive',
             onPress: () => {
-              setMessages([]);
-              setShowTextInput(false);
+              router.back();
             },
           },
         ]
       );
     } else {
-      console.log('Navigate back');
+      router.back();
     }
+  };
+
+  const handleClearInput = () => {
+    setInputMessage('');
   };
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <LinearGradient
-        colors={["#67E8F9", "#E0E7FF"]}
+        colors={["#dcfbffff", "#f2fbfbff"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.container}
       >
-        <StatusBar barStyle="dark-content" backgroundColor="#3DB9D4" />
+        <StatusBar barStyle="dark-content" backgroundColor="#8be5f9ff" />
         
+        {/* Enhanced Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
+          <TouchableOpacity 
+            style={styles.headerButton} 
+            onPress={handleBack}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
             <ArrowLeft size={24} color="#1F2937" strokeWidth={2.5} />
           </TouchableOpacity>
           
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>Support</Text>
-            <Text style={styles.headerSubtitle}>
-              We are here to solve your problem
-            </Text>
+            <Text style={styles.headerTitle}>Support Chat</Text>
+            <View style={styles.statusIndicator}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.headerSubtitle}>Online - Quick reply</Text>
+            </View>
           </View>
           
           <TouchableOpacity 
             style={styles.headerButton}
-            onPress={() => Alert.alert('Please Wait', 'App Under Development')}
+            onPress={() => Alert.alert('More Options', 'Feature coming soon!')}
+            accessibilityLabel="More options"
+            accessibilityRole="button"
           >
             <MoreVertical size={24} color="#1F2937" />
           </TouchableOpacity>
         </View>
 
+        {/* Improved Closed Notification */}
         <View style={styles.closedNotification}>
           <View style={styles.checkIconContainer}>
             <Check size={14} color="#D97706" strokeWidth={3} />
@@ -433,36 +456,45 @@ const SupportPage = () => {
           </Text>
         </View>
 
+        {/* Date Separator */}
         <View style={styles.todayContainer}>
-          <Text style={styles.todayText}>Today</Text>
+          <View style={styles.dateSeparator}>
+            <View style={styles.separatorLine} />
+            <Text style={styles.todayText}>Today</Text>
+            <View style={styles.separatorLine} />
+          </View>
         </View>
 
+        {/* Scrollable Chat Area */}
         <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
+          {/* Welcome Message */}
           <View style={styles.messageContainer}>
             <View style={[styles.messageBubble, styles.firstMessage]}>
-              <Text style={styles.messageText}>Hi Soham!</Text>
+              <Text style={styles.messageText}>Hi Soham! 👋</Text>
               <Text style={styles.messageText}>I'm here to help you out</Text>
               <Text style={styles.messageTime}>12:50 PM</Text>
             </View>
           </View>
 
+          {/* Initial Issue Selection */}
           {messages.length === 0 && (
             <View style={styles.messageContainer}>
               <View style={[styles.messageBubble, styles.issueMessage]}>
                 <View style={styles.exbookBadge}>
-                  <Text style={styles.exbookText}>EXBOOK</Text>
+                  <Text style={styles.exbookText}>EXBOOK SUPPORT</Text>
                 </View>
                 
                 <Text style={styles.messageText}>
                   Please select the issue you are facing.
                 </Text>
                 <Text style={styles.messageText}>
-                  we are here to help you out.
+                  We are here to help you out 😊
                 </Text>
 
                 <View style={styles.ordersContainer}>
@@ -472,38 +504,46 @@ const SupportPage = () => {
                       style={styles.orderCard}
                       onPress={() => handleSelectIssue(order.id, `${order.title} - ${order.subtitle}`)}
                       activeOpacity={0.7}
+                      accessibilityLabel={`Select issue for ${order.title}`}
+                      accessibilityRole="button"
                     >
                       <Text style={styles.orderDate}>{order.date}</Text>
                       <Text style={styles.orderTitle}>{order.title}</Text>
                       <Text style={styles.orderSubtitle}>{order.subtitle}</Text>
-                      <Text
-                        style={[
-                          styles.orderStatus,
-                          order.status === 'picked-up'
-                            ? styles.statusPickedUp
-                            : styles.statusDelivered,
-                        ]}
-                      >
-                        {order.status === 'picked-up' ? 'Picked up' : 'Delivered'}
-                      </Text>
+                      <View style={styles.statusBadge}>
+                        <Text
+                          style={[
+                            styles.orderStatus,
+                            order.status === 'picked-up'
+                              ? styles.statusPickedUp
+                              : styles.statusDelivered,
+                          ]}
+                        >
+                          ● {order.status === 'picked-up' ? 'Picked up' : 'Delivered'}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
 
                   <TouchableOpacity
-                    style={styles.orderCard}
+                    style={[styles.orderCard, styles.otherOrderCard]}
                     onPress={() => handleSelectIssue('other', 'Other previous orders')}
                     activeOpacity={0.7}
+                    accessibilityLabel="Select other previous orders"
+                    accessibilityRole="button"
                   >
-                    <Text style={styles.orderDate}>Other previous orders</Text>
+                    <Text style={styles.orderDate}>📦 Other previous orders</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.orderCard}
+                    style={[styles.orderCard, styles.otherOrderCard]}
                     onPress={() => handleSelectIssue('custom', 'My issue is not listed here')}
                     activeOpacity={0.7}
+                    accessibilityLabel="My issue is not listed"
+                    accessibilityRole="button"
                   >
                     <Text style={styles.orderDate}>
-                      My issue is not listed here
+                      ✍️ My issue is not listed here
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -511,6 +551,7 @@ const SupportPage = () => {
             </View>
           )}
 
+          {/* Chat Messages */}
           {messages.map((message) => (
             <View key={message.id}>
               <View
@@ -546,6 +587,7 @@ const SupportPage = () => {
                 </View>
               </View>
 
+              {/* Quick Reply Options */}
               {message.sender === 'support' && message.options && (
                 <View style={styles.optionsContainer}>
                   {message.options.map((option, index) => (
@@ -554,6 +596,8 @@ const SupportPage = () => {
                       style={styles.optionButton}
                       onPress={() => handleOptionClick(option)}
                       activeOpacity={0.7}
+                      accessibilityLabel={`Select ${option}`}
+                      accessibilityRole="button"
                     >
                       <Text style={styles.optionButtonText}>{option}</Text>
                     </TouchableOpacity>
@@ -562,19 +606,43 @@ const SupportPage = () => {
               )}
             </View>
           ))}
+
+          {/* Typing Indicator */}
+          {isTyping && (
+            <View style={styles.typingContainer}>
+              <View style={styles.typingBubble}>
+                <ActivityIndicator size="small" color="#003EF9" />
+                <Text style={styles.typingText}>Support is typing...</Text>
+              </View>
+            </View>
+          )}
         </ScrollView>
 
+        {/* Enhanced Input Area */}
         {showTextInput && (
           <View style={styles.chatInputContainer}>
-            <TextInput
-              style={styles.chatInput}
-              placeholder="Type your message..."
-              placeholderTextColor="rgba(0,0,0,0.4)"
-              value={inputMessage}
-              onChangeText={setInputMessage}
-              multiline
-              maxLength={500}
-            />
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.chatInput}
+                placeholder="Type your message..."
+                placeholderTextColor="rgba(0,0,0,0.4)"
+                value={inputMessage}
+                onChangeText={setInputMessage}
+                multiline
+                maxLength={500}
+                accessibilityLabel="Message input field"
+              />
+              {inputMessage.length > 0 && (
+                <TouchableOpacity
+                  style={styles.clearButton}
+                  onPress={handleClearInput}
+                  accessibilityLabel="Clear message"
+                  accessibilityRole="button"
+                >
+                  <X size={16} color="#6B7280" />
+                </TouchableOpacity>
+              )}
+            </View>
             <TouchableOpacity
               style={[
                 styles.sendButton,
@@ -583,6 +651,8 @@ const SupportPage = () => {
               onPress={handleSendMessage}
               disabled={inputMessage.trim() === ''}
               activeOpacity={0.7}
+              accessibilityLabel="Send message"
+              accessibilityRole="button"
             >
               <Send
                 size={20}
@@ -592,6 +662,15 @@ const SupportPage = () => {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Character Count for Input */}
+        {showTextInput && inputMessage.length > 400 && (
+          <View style={styles.characterCountContainer}>
+            <Text style={styles.characterCount}>
+              {inputMessage.length}/500
+            </Text>
+          </View>
+        )}
       </LinearGradient>
     </KeyboardAvoidingView>
   );
@@ -599,6 +678,7 @@ const SupportPage = () => {
 
 const makeStyles = (width: number, height: number) => {
   const s = (n: number) => (width / 375) * n;
+  const vs = (n: number) => (height / 812) * n;
   const topPad = clamp(s(45), 24, 60);
   const sidePad = clamp(s(16), 12, 24);
 
@@ -611,30 +691,54 @@ const makeStyles = (width: number, height: number) => {
       paddingHorizontal: sidePad,
       paddingTop: topPad,
       paddingBottom: clamp(s(16), 12, 20),
-      backgroundColor: '#3DB9D4',
+      backgroundColor: '#b1effdff',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 3,
     },
-    headerButton: { padding: clamp(s(4), 3, 6) },
-    headerTextContainer: { flex: 1, marginLeft: clamp(s(16), 12, 20) },
+    headerButton: { 
+      padding: clamp(s(8), 6, 10),
+      borderRadius: clamp(s(8), 6, 10),
+    },
+    headerTextContainer: { 
+      flex: 1, 
+      marginLeft: clamp(s(12), 10, 16),
+    },
     headerTitle: {
       fontSize: clamp(s(20), 18, 24),
       fontWeight: 'bold',
       color: '#1F2937',
+      marginBottom: clamp(s(2), 1, 3),
+    },
+    statusIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: clamp(s(6), 4, 8),
+    },
+    onlineDot: {
+      width: clamp(s(8), 6, 10),
+      height: clamp(s(8), 6, 10),
+      borderRadius: clamp(s(4), 3, 5),
+      backgroundColor: '#10B981',
     },
     headerSubtitle: {
       fontSize: clamp(s(12), 11, 14),
       color: '#374151',
-      marginTop: clamp(s(2), 1, 3),
     },
     closedNotification: {
       backgroundColor: '#FEF3C7',
       marginHorizontal: sidePad,
-      marginBottom: clamp(s(16), 12, 20),
+      marginBottom: clamp(s(12), 10, 16),
       marginTop: clamp(s(16), 12, 20),
       paddingVertical: clamp(s(10), 8, 12),
       paddingHorizontal: clamp(s(16), 12, 20),
-      borderRadius: clamp(s(8), 6, 10),
+      borderRadius: clamp(s(12), 10, 14),
       flexDirection: 'row',
       alignItems: 'center',
+      borderLeftWidth: clamp(s(4), 3, 5),
+      borderLeftColor: '#F59E0B',
     },
     checkIconContainer: {
       backgroundColor: '#FFFFFF',
@@ -643,39 +747,56 @@ const makeStyles = (width: number, height: number) => {
       marginRight: clamp(s(8), 6, 10),
     },
     closedText: {
-      fontSize: clamp(s(14), 13, 16),
+      fontSize: clamp(s(13), 12, 15),
       color: '#92400E',
       fontWeight: '600',
     },
-    todayContainer: { alignItems: 'center', paddingVertical: clamp(s(12), 10, 16) },
+    todayContainer: { 
+      alignItems: 'center', 
+      paddingVertical: clamp(s(16), 12, 20),
+    },
+    dateSeparator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: clamp(s(12), 10, 16),
+    },
+    separatorLine: {
+      width: clamp(s(40), 30, 50),
+      height: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    },
     todayText: {
-      fontSize: clamp(s(14), 13, 16),
-      color: '#374151',
+      fontSize: clamp(s(12), 11, 14),
+      color: '#6B7280',
       fontWeight: '600',
+      paddingHorizontal: clamp(s(12), 10, 16),
+      paddingVertical: clamp(s(4), 3, 6),
+      backgroundColor: 'rgba(255, 255, 255, 0.7)',
+      borderRadius: clamp(s(12), 10, 14),
     },
     scrollView: { flex: 1 },
     scrollContent: {
       paddingHorizontal: sidePad,
-      paddingBottom: clamp(s(100), 80, 120),
+      paddingBottom: clamp(vs(120), 100, 140),
     },
-    messageContainer: { marginBottom: clamp(s(16), 12, 20) },
+    messageContainer: { marginBottom: clamp(vs(16), 12, 20) },
     messageBubble: {
       backgroundColor: '#FFFFFF',
       borderRadius: clamp(s(16), 12, 20),
       borderTopLeftRadius: clamp(s(4), 3, 6),
-      padding: clamp(s(20), 16, 24),
+      padding: clamp(s(16), 14, 20),
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
       elevation: 2,
     },
     firstMessage: {
       maxWidth: '85%',
-      paddingVertical: clamp(s(12), 10, 16),
-      paddingHorizontal: clamp(s(20), 16, 24),
+      paddingVertical: clamp(s(14), 12, 18),
+      paddingHorizontal: clamp(s(18), 16, 22),
     },
-    issueMessage: { maxWidth: '90%' },
+    issueMessage: { maxWidth: '95%' },
     messageText: {
       fontSize: clamp(s(14), 13, 16),
       color: '#1F2937',
@@ -684,34 +805,43 @@ const makeStyles = (width: number, height: number) => {
       fontWeight: '500',
     },
     messageTime: {
-      fontSize: clamp(s(12), 11, 14),
-      color: '#6B7280',
+      fontSize: clamp(s(11), 10, 13),
+      color: '#9CA3AF',
       textAlign: 'right',
       marginTop: clamp(s(8), 6, 10),
       fontWeight: '500',
     },
     exbookBadge: {
       backgroundColor: '#DBEAFE',
-      paddingHorizontal: clamp(s(12), 10, 16),
-      paddingVertical: clamp(s(4), 3, 6),
-      borderRadius: clamp(s(4), 3, 6),
+      paddingHorizontal: clamp(s(14), 12, 18),
+      paddingVertical: clamp(s(6), 5, 8),
+      borderRadius: clamp(s(6), 5, 8),
       alignSelf: 'flex-start',
       marginBottom: clamp(s(12), 10, 16),
     },
     exbookText: {
-      fontSize: clamp(s(12), 11, 14),
+      fontSize: clamp(s(11), 10, 13),
       color: '#1E40AF',
       fontWeight: '700',
-      letterSpacing: 0.5,
+      letterSpacing: 0.8,
     },
-    ordersContainer: { marginTop: clamp(s(16), 12, 20) },
+    ordersContainer: { marginTop: clamp(vs(16), 12, 20) },
     orderCard: {
       backgroundColor: '#F9FAFB',
-      borderRadius: clamp(s(8), 6, 10),
-      padding: clamp(s(12), 10, 16),
-      marginBottom: clamp(s(12), 10, 16),
-      borderWidth: 1,
+      borderRadius: clamp(s(12), 10, 14),
+      padding: clamp(s(14), 12, 18),
+      marginBottom: clamp(vs(10), 8, 12),
+      borderWidth: 1.5,
       borderColor: '#E5E7EB',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    otherOrderCard: {
+      backgroundColor: '#EFF6FF',
+      borderColor: '#BFDBFE',
     },
     orderDate: {
       fontSize: clamp(s(12), 11, 14),
@@ -720,42 +850,55 @@ const makeStyles = (width: number, height: number) => {
       marginBottom: clamp(s(4), 3, 6),
     },
     orderTitle: {
-      fontSize: clamp(s(12), 11, 14),
+      fontSize: clamp(s(13), 12, 15),
       color: '#0066CC',
       fontWeight: '600',
       marginBottom: clamp(s(2), 1, 3),
     },
     orderSubtitle: {
       fontSize: clamp(s(12), 11, 14),
-      color: '#4B5563',
-      marginBottom: clamp(s(8), 6, 10),
+      color: '#6B7280',
+      marginBottom: clamp(vs(8), 6, 10),
       fontWeight: '500',
+      lineHeight: clamp(s(18), 16, 20),
     },
-    orderStatus: { fontSize: clamp(s(12), 11, 14), fontWeight: '700' },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    orderStatus: { 
+      fontSize: clamp(s(12), 11, 14), 
+      fontWeight: '700',
+    },
     statusPickedUp: { color: '#059669' },
     statusDelivered: { color: '#DC2626' },
     chatMessageContainer: {
-      marginBottom: clamp(s(12), 10, 16),
+      marginBottom: clamp(vs(12), 10, 16),
       alignItems: 'flex-start',
     },
     chatMessageContainerUser: { alignItems: 'flex-end' },
     chatBubble: {
-      maxWidth: '80%',
-      borderRadius: clamp(s(16), 12, 20),
-      padding: clamp(s(12), 10, 16),
+      maxWidth: '82%',
+      borderRadius: clamp(s(18), 16, 22),
+      padding: clamp(s(14), 12, 18),
     },
     chatBubbleSupport: {
       backgroundColor: '#FFFFFF',
       borderTopLeftRadius: clamp(s(4), 3, 6),
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
+      shadowOpacity: 0.08,
       shadowRadius: 3,
       elevation: 2,
     },
     chatBubbleUser: {
-      backgroundColor: '#003EF9',
+      backgroundColor: '#ffffffff',
       borderTopRightRadius: clamp(s(4), 3, 6),
+      shadowColor: '#003EF9',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
     },
     chatMessageText: {
       fontSize: clamp(s(14), 13, 16),
@@ -763,73 +906,136 @@ const makeStyles = (width: number, height: number) => {
       lineHeight: clamp(s(20), 18, 24),
       fontWeight: '500',
     },
-    chatMessageTextUser: { color: '#FFFFFF' },
+    chatMessageTextUser: { color: '#020b20ff' },
     chatTime: {
       fontSize: clamp(s(10), 9, 12),
-      color: '#6B7280',
-      marginTop: clamp(s(4), 3, 6),
+      color: '#1F2937',
+      marginTop: clamp(s(6), 4, 8),
       fontWeight: '500',
     },
     chatTimeUser: { 
       textAlign: 'right',
-      color: '#E0E7FF',
+      color: '#1F2937',
+    },
+    typingContainer: {
+      marginBottom: clamp(vs(12), 10, 16),
+      alignItems: 'flex-start',
+    },
+    typingBubble: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: clamp(s(8), 6, 10),
+      backgroundColor: '#FFFFFF',
+      borderRadius: clamp(s(18), 16, 22),
+      borderTopLeftRadius: clamp(s(4), 3, 6),
+      paddingVertical: clamp(s(10), 8, 12),
+      paddingHorizontal: clamp(s(14), 12, 18),
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    typingText: {
+      fontSize: clamp(s(13), 12, 15),
+      color: '#6B7280',
+      fontStyle: 'italic',
     },
     optionsContainer: {
-      marginTop: clamp(s(8), 6, 10),
-      marginBottom: clamp(s(12), 10, 16),
+      marginTop: clamp(vs(8), 6, 10),
+      marginBottom: clamp(vs(12), 10, 16),
       paddingHorizontal: clamp(s(4), 2, 6),
+      gap: clamp(vs(8), 6, 10),
     },
     optionButton: {
       backgroundColor: '#FFFFFF',
       borderWidth: 2,
-      borderColor: '#003EF9',
-      borderRadius: clamp(s(20), 16, 24),
-      paddingVertical: clamp(s(10), 8, 12),
-      paddingHorizontal: clamp(s(16), 14, 20),
-      marginBottom: clamp(s(8), 6, 10),
+      borderColor: '#86a4ffff',
+      borderRadius: clamp(s(24), 20, 28),
+      paddingVertical: clamp(s(12), 10, 14),
+      paddingHorizontal: clamp(s(18), 16, 22),
       alignSelf: 'flex-start',
-      shadowColor: '#003EF9',
-      shadowOffset: { width: 0, height: 1 },
+      shadowColor: '#003ef9b1',
+      shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
-      shadowRadius: 2,
-      elevation: 1,
+      shadowRadius: 3,
+      elevation: 2,
     },
     optionButtonText: {
       fontSize: clamp(s(13), 12, 15),
-      color: '#003EF9',
+      color: '#050a1bff',
       fontWeight: '700',
     },
     chatInputContainer: {
       flexDirection: 'row',
       alignItems: 'flex-end',
       paddingHorizontal: sidePad,
-      paddingVertical: clamp(s(12), 10, 16),
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      paddingVertical: clamp(s(14), 12, 18),
+      backgroundColor: 'rgba(255, 255, 255, 0.98)',
       borderTopWidth: 1,
       borderTopColor: '#E5E7EB',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    inputWrapper: {
+      flex: 1,
+      position: 'relative',
     },
     chatInput: {
-      flex: 1,
       backgroundColor: '#F9FAFB',
-      borderRadius: clamp(s(20), 16, 24),
-      paddingHorizontal: clamp(s(16), 14, 20),
-      paddingVertical: clamp(s(10), 8, 12),
+      borderRadius: clamp(s(24), 20, 28),
+      paddingHorizontal: clamp(s(18), 16, 22),
+      paddingVertical: clamp(s(12), 10, 14),
+      paddingRight: clamp(s(40), 36, 48),
       fontSize: clamp(s(14), 13, 16),
       color: '#1F2937',
-      maxHeight: clamp(s(100), 80, 120),
-      marginRight: clamp(s(8), 6, 10),
-      borderWidth: 1,
+      maxHeight: clamp(vs(100), 80, 120),
+      marginRight: clamp(s(10), 8, 12),
+      borderWidth: 1.5,
       borderColor: '#E5E7EB',
+      lineHeight: clamp(s(20), 18, 24),
+    },
+    clearButton: {
+      position: 'absolute',
+      right: clamp(s(22), 20, 28),
+      top: '50%',
+      transform: [{ translateY: -clamp(s(8), 6, 10) }],
+      padding: clamp(s(4), 3, 6),
     },
     sendButton: {
-      backgroundColor: '#003EF9',
-      width: clamp(s(44), 40, 52),
-      height: clamp(s(44), 40, 52),
-      borderRadius: clamp(s(22), 20, 26),
+      backgroundColor: '#b8c8fbff',
+      width: clamp(s(48), 44, 56),
+      height: clamp(s(48), 44, 56),
+      borderRadius: clamp(s(24), 22, 28),
       alignItems: 'center',
       justifyContent: 'center',
+      shadowColor: '#003EF9',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
     },
-    sendButtonDisabled: { backgroundColor: '#D1D5DB' },
+    sendButtonDisabled: { 
+      backgroundColor: '#D1D5DB',
+      shadowOpacity: 0,
+    },
+    characterCountContainer: {
+      position: 'absolute',
+      bottom: clamp(vs(70), 60, 85),
+      right: sidePad + clamp(s(20), 18, 24),
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      paddingHorizontal: clamp(s(8), 6, 10),
+      paddingVertical: clamp(s(4), 3, 6),
+      borderRadius: clamp(s(12), 10, 14),
+    },
+    characterCount: {
+      fontSize: clamp(s(10), 9, 12),
+      color: '#FFFFFF',
+      fontWeight: '600',
+    },
   });
 };
 

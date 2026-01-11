@@ -14,6 +14,7 @@ import {
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -33,6 +34,7 @@ const ProfileScreen = () => {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -64,7 +66,7 @@ const ProfileScreen = () => {
       } else {
         setAvatarUri(null);
       }
-  
+
       // 3️⃣ Get default address (SAFE)
       let { data: addressData } = await supabase
         .from("addresses")
@@ -96,251 +98,349 @@ const ProfileScreen = () => {
     fetchProfileData();
   }, []);
 
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
+    try {
+      setLoading(true);
+
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        Alert.alert("Error", error.message);
+        return;
+      }
+
+      setShowLogoutModal(false);
+
+      // 🔐 Prevent going back
+      router.replace("/(auth)/Login");
+    } catch (err) {
+      Alert.alert("Error", "Failed to logout");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <LinearGradient
-      colors={["#70F3FA", "#FFFFFF"]}
-      style={styles.gradientContainer}
-    >
-      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-        <ScrollView
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-          bounces={true}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Back Button - Moved down and navigates to Dashboard */}
-          <TouchableOpacity
-            style={styles.backButton}
-            activeOpacity={0.7}
-            onPress={() => router.push('/(screen)/Dashboard')}
+    <>
+      <LinearGradient
+        colors={["#ffffff", "#f2fbfbff"]}
+        style={styles.gradientContainer}
+      >
+        <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+          <ScrollView
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+            keyboardShouldPersistTaps="handled"
           >
-            <ArrowLeft color="#000" size={scale(24, width)} />
-          </TouchableOpacity>
+            {/* Back Button - Moved down and navigates to Dashboard */}
+            <TouchableOpacity
+              style={styles.backButton}
+              activeOpacity={0.7}
+              onPress={() => router.push("/(screen)/Dashboard")}
+            >
+              <ArrowLeft color="#000" size={scale(24, width)} />
+            </TouchableOpacity>
 
-          {/* Profile Card with Background Image - Clickable to Edit Profile */}
-          <TouchableWithoutFeedback
-          
-            
-          >
-            <View style={styles.profileCardWrapper}>
-              <LinearGradient
-                colors={["#67E8F9", "#E0E7FF"]}
-                start={{ x: 1, y: 1 }}
-                end={{ x: 0, y: 0 }}
-                style={styles.profileCard}
-              >
-                {/* Background Decorative Image */}
-                <Image
-                  source={require("../../assets/images/page.png")}
-                  style={styles.backgroundDecoration}
-                  resizeMode="contain"
-                />
+            {/* Profile Card with Background Image - Clickable to Edit Profile */}
+            <TouchableWithoutFeedback>
+              <View style={styles.profileCardWrapper}>
+                <LinearGradient
+                  colors={["#abfcfcff", "#E0E7FF"]}
+                  start={{ x: 1, y: 1 }}
+                  end={{ x: 0, y: 0 }}
+                  style={styles.profileCard}
+                >
+                  {/* Background Decorative Image */}
+                  <Image
+                    source={require("../../assets/images/page.png")}
+                    style={styles.backgroundDecoration}
+                    resizeMode="contain"
+                  />
 
-                {/* Profile Header */}
-                <TouchableWithoutFeedback style={styles.profileHeader} onPress={() => router.push("/(screen)/EditProfile")}>
-                  <View style={styles.profileInfo}>
-                    <View style={styles.avatarContainer}>
-                      <LinearGradient
-                        colors={["#6634C9", "#4e46e5"]}
-                        style={styles.avatarBorder}
-                      >
-                        <View style={styles.avatar}>
-                          <Image
-                            source={
-                              avatarUri
-                                ? { uri: avatarUri }
-                                : require("../../assets/images/profile.png")
-                            }
-                            style={styles.profileImage}
-                            resizeMode="cover"
-                          />
-                        </View>
-                      </LinearGradient>
-                    </View>
-
-                    <View style={styles.userDetails}>
-                      <Text style={styles.userName}>{fullName || "User"}</Text>
-                      <Text style={styles.userPhone}> {phone}</Text>
-                      <Text
-                        style={styles.userAddress}
-                        numberOfLines={2}
-                        ellipsizeMode="tail"
-                      >
-                        {address || "Add your address"}
-                      </Text>
-                      <Text style={styles.editProfile}>Edit profile</Text>
-                    </View>
-                  </View>
-                </TouchableWithoutFeedback>
-
-              </LinearGradient>
-
-              {/* Gold Coins Section - Connected to Profile Card */}
-              <View style={styles.coinsCard} >
-                <View style={styles.coinsContainer}>
-                  <View style={styles.coinsLeft}>
-                    <View style={styles.coinIcon}>
-                      <Text style={styles.coinCurrency}>₹</Text>
-                    </View>
-                    <Text style={styles.goldCoinsText}>Gold Coins</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.savedBadge}
-                    activeOpacity={0.7}
-                    onPress={()=>router.push("/(screen)/GoldSection")}
+                  {/* Profile Header */}
+                  <TouchableWithoutFeedback
+                    style={styles.profileHeader}
+                    onPress={() => router.push("/(screen)/EditProfile")}
                   >
-                    <Text style={styles.savedText}>Saved ₹0</Text>
-                    <ChevronRight
-                      color="#D97706"
-                      size={scale(20, width)}
-                      strokeWidth={3}
-                    />
-                  </TouchableOpacity>
+                    <View style={styles.profileInfo}>
+                      <View style={styles.avatarContainer}>
+                        <LinearGradient
+                          colors={["#6634C9", "#4e46e5"]}
+                          style={styles.avatarBorder}
+                        >
+                          <View style={styles.avatar}>
+                            <Image
+                              source={
+                                avatarUri
+                                  ? { uri: avatarUri }
+                                  : require("../../assets/images/profile.png")
+                              }
+                              style={styles.profileImage}
+                              resizeMode="cover"
+                            />
+                          </View>
+                        </LinearGradient>
+                      </View>
+
+                      <View style={styles.userDetails}>
+                        <Text style={styles.userName}>
+                          {fullName || "User"}
+                        </Text>
+                        <Text style={styles.userPhone}> {phone}</Text>
+                        <Text
+                          style={styles.userAddress}
+                          numberOfLines={2}
+                          ellipsizeMode="tail"
+                        >
+                          {address || "Add your address"}
+                        </Text>
+                        <Text style={styles.editProfile}>Edit profile</Text>
+                      </View>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </LinearGradient>
+
+                {/* Gold Coins Section - Connected to Profile Card */}
+                <View style={styles.coinsCard}>
+                  <View style={styles.coinsContainer}>
+                    <View style={styles.coinsLeft}>
+                      <Image
+                        source={require("../../assets/images/Front-coin.png")}
+                        resizeMode="contain"
+                        style={{ width: 35, height: 35 }}
+                      />
+                      <Text style={styles.goldCoinsText}>Gold Coins</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.savedBadge}
+                      activeOpacity={0.7}
+                      onPress={() => router.push("/(screen)/GoldSection")}
+                    >
+                      <Text style={styles.savedText}>Saved ₹0</Text>
+                      <ChevronRight
+                        color="#D97706"
+                        size={scale(20, width)}
+                        strokeWidth={3}
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
+            </TouchableWithoutFeedback>
+
+            {/* Action Buttons */}
+            <View style={styles.actionGrid}>
+              {/* My Orders - With custom icon and navigates to Orders */}
+              <TouchableOpacity
+                style={styles.actionButtonWrapper}
+                activeOpacity={0.7}
+                onPress={() => router.push("/(screen)/OrdersScreen")}
+              >
+                <LinearGradient
+                  colors={["#d7ffffff", "#d7ffffff"]}
+                  style={styles.actionButton}
+                >
+                  <Image
+                    source={require("../../assets/images/Orders_Icon.png")}
+                    style={styles.actionIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.actionText}>My Orders</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Sell books */}
+              <TouchableOpacity
+                style={styles.actionButtonWrapper}
+                activeOpacity={0.7}
+                onPress={() => router.push("/(screen)/UploadScreen1")}
+              >
+                <LinearGradient
+                  colors={["#d7ffffff", "#d7ffffff"]}
+                  style={styles.actionButton}
+                >
+                  <Image
+                    source={require("../../assets/images/Sellbook.png")}
+                    style={styles.actionIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.actionText}>Sell books</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Deliverables - With custom icon and navigates to Deliverables */}
+              <TouchableOpacity
+                style={styles.actionButtonWrapper}
+                activeOpacity={0.8}
+                onPress={() => router.push("/(screen)/DeliverablesScreen")}
+              >
+                <LinearGradient
+                  colors={["#d7ffffff", "#d7ffffff"]}
+                  style={styles.actionButton}
+                >
+                  <Image
+                    source={require("../../assets/images/Deliverables_Icon.png")}
+                    style={styles.actionIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.actionText}>Deliverables</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Need help */}
+              <TouchableOpacity
+                style={styles.actionButtonWrapper}
+                activeOpacity={0.7}
+                onPress={() => router.push("/(screen)/Support")}
+              >
+                <LinearGradient
+                  colors={["#d7ffffff", "#d7ffffff"]}
+                  style={styles.actionButton}
+                >
+                  <Image
+                    source={require("../../assets/images/needhelp.png")}
+                    style={styles.actionIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.actionText}>Need help?</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
-          </TouchableWithoutFeedback>
 
-          {/* Action Buttons */}
-          <View style={styles.actionGrid}>
-            {/* My Orders - With custom icon and navigates to Orders */}
-            <TouchableOpacity
-              style={styles.actionButtonWrapper}
-              activeOpacity={0.7}
-              onPress={() => router.push("/(screen)/OrdersScreen")}
-            >
-              <LinearGradient
-                colors={["#22D3EE", "#06B6D4"]}
-                style={styles.actionButton}
-              >
-                <Image
-                  source={require("../../assets/images/Orders_Icon.png")}
-                  style={styles.actionIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.actionText}>My Orders</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Sell books */}
-            <TouchableOpacity
-              style={styles.actionButtonWrapper}
-              activeOpacity={0.7}
-              onPress={() => router.push("/(screen)/UploadScreen1")}
-            >
-              <LinearGradient
-                colors={["#22D3EE", "#06B6D4"]}
-                style={styles.actionButton}
-              >
-                <Image
-                  source={require("../../assets/images/Sellbook.png")}
-                  style={styles.actionIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.actionText}>Sell books</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Deliverables - With custom icon and navigates to Deliverables */}
-            <TouchableOpacity
-              style={styles.actionButtonWrapper}
-              activeOpacity={0.8}
-              onPress={()=>router.push("/(screen)/DeliverablesScreen")}
-            >
-              <LinearGradient
-                colors={["#22D3EE", "#06B6D4"]}
-                style={styles.actionButton}
-              >
-                <Image
-                  source={require("../../assets/images/Deliverables_Icon.png")}
-                  style={styles.actionIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.actionText}>Deliverables</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Need help */}
-            <TouchableOpacity
-              style={styles.actionButtonWrapper}
-              activeOpacity={0.7}
-              onPress={() => router.push("/(screen)/Support")}
-            >
-              <LinearGradient
-                colors={["#22D3EE", "#06B6D4"]}
-                style={styles.actionButton}
-              >
-                <Image
-                  source={require("../../assets/images/needhelp.png")}
-                  style={styles.actionIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.actionText}>Need help?</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          {/* Menu List */}
-          <View style={styles.menuContainer}>
-            <MenuItem
-              icon={<Star color="#fff" size={scale(24, width)} />}
-              label="Your rating"
-              badge="⭐"
-              width={width}
-              onPress={()=>router.push('/Components/CommingSoon')}
-            />
-            <MenuItem
-              icon={<ThumbsUp color="#fff" size={scale(24, width)} />}
-              label="Your feedback"
-              width={width}
-              onPress={()=>router.push('/Components/CommingSoon')}
-            />
+            {/* Menu List */}
+            <View style={styles.menuContainer}>
               <MenuItem
-              icon={<Clock color="#fff" size={scale(24, width)} />}
-              label="Sell History"
-              width={width}
-              onPress={()=>router.push('/Components/CommingSoon')}
-            />
-            <MenuItem
-              icon={<Info color="#fff" size={scale(24, width)} />}
-              label="About"
-              width={width}
-              onPress={()=>router.push('/Components/CommingSoon')}
-            />
-            <MenuItem
-              icon={<Edit color="#fff" size={scale(24, width)} />}
-              label="Send feedback"
-              width={width}
-              onPress={()=>router.push('/Components/CommingSoon')}
-            />
-            <MenuItem
-              icon={<AlertCircle color="#fff" size={scale(24, width)} />}
-              label="Report"
-              width={width}
-              onPress={()=>router.push('/Components/CommingSoon')}
-            />
-            <MenuItem
-              icon={<Settings color="#fff" size={scale(24, width)} />}
-              label="Settings"
-              width={width}
-              onPress={()=>router.push('/Components/CommingSoon')}
-            />
-            <MenuItem
-              icon={<LogOut color="#fff" size={scale(24, width)} />}
-              label="Logout"
-              isLast
-              width={width}
-              onPress={() => {
-                // Add logout logic here
-              }}
-            />
-          </View>
+                icon={<Star color="#232323ff" size={scale(24, width)} />}
+                label="Your rating"
+                badge="⭐"
+                width={width}
+                onPress={() => router.push("/Components/CommingSoon")}
+              />
+              <MenuItem
+                icon={<ThumbsUp color="#232323ff" size={scale(24, width)} />}
+                label="Your feedback"
+                width={width}
+                onPress={() => router.push("/Components/CommingSoon")}
+              />
+              <MenuItem
+                icon={<Clock color="#232323ff" size={scale(24, width)} />}
+                label="Sell History"
+                width={width}
+                onPress={() => router.push("/Components/CommingSoon")}
+              />
+              <MenuItem
+                icon={<Info color="#232323ff" size={scale(24, width)} />}
+                label="About"
+                width={width}
+                onPress={() => router.push("/Components/CommingSoon")}
+              />
+              <MenuItem
+                icon={<Edit color="#232323ff" size={scale(24, width)} />}
+                label="Send feedback"
+                width={width}
+                onPress={() => router.push("/Components/CommingSoon")}
+              />
+              <MenuItem
+                icon={<AlertCircle color="#232323ff" size={scale(24, width)} />}
+                label="Report"
+                width={width}
+                onPress={() => router.push("/Components/CommingSoon")}
+              />
+              <MenuItem
+                icon={<Settings color="#232323ff" size={scale(24, width)} />}
+                label="Settings"
+                width={width}
+                onPress={() => router.push("/Components/CommingSoon")}
+              />
+              <MenuItem
+                icon={<LogOut color="#232323ff" size={scale(24, width)} />}
+                label="Logout"
+                isLast
+                width={width}
+                onPress={handleLogout}
+              />
+            </View>
 
-          {/* Extra bottom padding for better scrolling */}
-          <View style={styles.bottomPadding} />
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+            {/* Extra bottom padding for better scrolling */}
+            <View style={styles.bottomPadding} />
+          </ScrollView>
+        </SafeAreaView>
+      </LinearGradient>
+
+      {showLogoutModal && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 999,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#fff",
+              width: "80%",
+              borderRadius: 14,
+              padding: 20,
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>
+              Logout
+            </Text>
+
+            <Text style={{ color: "#6b7280", marginBottom: 20 }}>
+              Are you sure you want to logout?
+            </Text>
+
+            <TouchableOpacity
+              onPress={confirmLogout}
+              disabled={loading}
+              style={{
+                backgroundColor: "#DC2626",
+                paddingVertical: 12,
+                borderRadius: 10,
+                marginBottom: 10,
+              }}
+            >
+              <Text
+                style={{
+                  color: "#fff",
+                  fontWeight: "700",
+                  textAlign: "center",
+                }}
+              >
+                {loading ? "Logging out..." : "Logout"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setShowLogoutModal(false)}
+              disabled={loading}
+            >
+              <Text
+                style={{
+                  textAlign: "center",
+                  color: "#2563EB",
+                  fontWeight: "600",
+                }}
+              >
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </>
   );
 };
 
@@ -379,7 +479,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
             <Text style={styles.badgeText}>{badge}</Text>
           </View>
         )}
-        <ChevronRight color="#fff" size={scale(20, width)} />
+        <ChevronRight color="#0f0f0fff" size={scale(20, width)} />
       </View>
     </TouchableOpacity>
   );
@@ -502,14 +602,14 @@ const createStyles = (width: number, height: number) => {
     },
     coinsCard: {
       width: "100%",
-      backgroundColor: "#9EF5F7",
+      backgroundColor: "#d7ffffff",
       borderBottomLeftRadius: moderateScale(15, width),
       borderBottomRightRadius: moderateScale(15, width),
       paddingHorizontal: scale(10, width),
       paddingVertical: verticalScale(12, height),
       borderWidth: scale(2, width),
       borderTopWidth: scale(1, width),
-      borderColor: "#9ED3C9",
+      borderColor: "#adfcfcff",
       marginTop: verticalScale(-49, height),
     },
     coinsContainer: {
@@ -522,7 +622,7 @@ const createStyles = (width: number, height: number) => {
     coinsLeft: {
       flexDirection: "row",
       alignItems: "center",
-      gap: scale(10, width),
+      gap: scale(5, width),
     },
     coinIcon: {
       width: scale(36, width),
@@ -540,7 +640,7 @@ const createStyles = (width: number, height: number) => {
     goldCoinsText: {
       fontSize: moderateScale(16, width, 0.3),
       fontWeight: "600",
-      color: "#D97706",
+      color: "#c9a908",
     },
     savedBadge: {
       flexDirection: "row",
@@ -572,18 +672,20 @@ const createStyles = (width: number, height: number) => {
       minHeight: verticalScale(100, height),
     },
     actionButton: {
-      borderRadius: moderateScale(16, width),
+      borderRadius: moderateScale(12, width),
       padding: scale(16, width),
       alignItems: "center",
       gap: verticalScale(8, height),
       minHeight: verticalScale(100, height),
       justifyContent: "center",
       flex: 1,
-      shadowColor: "#000",
+      shadowColor: "#007cf9ff",
       shadowOffset: { width: 0, height: verticalScale(2, height) },
       shadowOpacity: 0.1,
-      shadowRadius: scale(4, width),
-      elevation: 3,
+      shadowRadius: 8,
+     
+      borderWidth: 1.5,
+      borderColor: "#31c8ff16",
     },
     actionIcon: {
       width: scale(32, width),
@@ -592,21 +694,23 @@ const createStyles = (width: number, height: number) => {
     actionText: {
       fontSize: moderateScale(11, width, 0.3),
       fontWeight: "600",
-      color: "#fff",
+      color: "#000000ff",
       textAlign: "center",
     },
     menuContainer: {
-      backgroundColor: "#3DB9D4",
-      borderRadius: moderateScale(24, width),
+      backgroundColor: "#d7ffffff",
+      borderRadius: moderateScale(12, width),
       overflow: "hidden",
-      shadowColor: "#000",
+      shadowColor: "#007cf9ff",
       shadowOffset: { width: 0, height: verticalScale(4, height) },
       shadowOpacity: 0.1,
-      shadowRadius: scale(12, width),
-      elevation: 5,
+      shadowRadius: 8,
+     
       width: CARD_WIDTH,
       alignSelf: "center",
       marginTop: verticalScale(8, height),
+      borderWidth: 1.5,
+      borderColor: "#31c8ff20",
     },
     bottomPadding: {
       height: verticalScale(20, height),
@@ -626,7 +730,7 @@ const createMenuStyles = (width: number) => {
     },
     menuItemBorder: {
       borderBottomWidth: 1,
-      borderBottomColor: "rgba(255, 255, 255, 0.2)",
+      borderBottomColor: "#1188ff1a",
     },
     menuItemLeft: {
       flexDirection: "row",
@@ -643,7 +747,7 @@ const createMenuStyles = (width: number) => {
     menuLabel: {
       fontSize: moderateScale(16, width, 0.3),
       fontWeight: "600",
-      color: "#fff",
+      color: "#232323ff",
       flexShrink: 1,
     },
     menuItemRight: {
@@ -652,7 +756,7 @@ const createMenuStyles = (width: number) => {
       gap: scale(8, width),
     },
     badge: {
-      backgroundColor: "rgba(255, 255, 255, 0.3)",
+      backgroundColor: "#fbfbfbb0",
       paddingHorizontal: scale(12, width),
       paddingVertical: scale(4, width),
       borderRadius: moderateScale(12, width),
@@ -660,7 +764,7 @@ const createMenuStyles = (width: number) => {
     badgeText: {
       fontSize: moderateScale(14, width, 0.3),
       fontWeight: "600",
-      color: "#fff",
+      color: "#2b2b2bff",
     },
   });
 };

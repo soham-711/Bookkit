@@ -114,6 +114,7 @@ import {
 
 import { OrdersProvider } from "@/Context/OrdersContext";
 import { supabase } from "../Utils/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /* ---------- LOCATION BOOTSTRAPPER ---------- */
 function LocationBootstrapper() {
@@ -185,6 +186,10 @@ export default function RootLayout() {
     run();
   }, []);
 
+
+
+
+
   /* ===== SMOOTH FADE OUT ===== */
   const finishLoading = () => {
     Animated.timing(fadeAnim, {
@@ -193,6 +198,8 @@ export default function RootLayout() {
       useNativeDriver: true,
     }).start(() => setLoading(false));
   };
+
+
 
   return (
     <SafeAreaProvider>

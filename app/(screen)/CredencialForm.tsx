@@ -68,7 +68,30 @@ const [phone, setPhone] = useState("");
     return true;
   };
 
-  const saveProfile = async () => {
+// const saveProfile = async () => {
+//   if (!validateName()) return;
+//   if (!userId) return;
+
+//   const { error } = await supabase
+//     .from("profiles")
+//     .update({
+//       full_name: name.trim(),
+//       phone: phone,
+//       onboarding_completed: true,
+//       updated_at: new Date().toISOString(),
+//     })
+//     .eq("user_id", userId);
+
+//   if (error) {
+//     Alert.alert("Error", error.message);
+//     return;
+//   }
+
+//   // ✅ Onboarding done forever
+//   router.replace("/(screen)/UserCurrentLocation");
+// };
+
+    const saveProfile = async () => {
   if (!validateName()) return;
   if (!userId) return;
 

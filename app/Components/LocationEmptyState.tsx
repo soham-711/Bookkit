@@ -1,5 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
 type Props = {
   title?: string;
@@ -12,7 +11,11 @@ export default function LocationEmptyState({
 }: Props) {
   return (
     <View style={styles.container}>
-      <Ionicons name="location-outline" size={48} color="#9CA3AF" />
+      <Image
+        source={require("../../assets/images/Nodata.gif")}
+        style={styles.gif}
+        resizeMode="contain"
+      />
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
@@ -22,13 +25,18 @@ export default function LocationEmptyState({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 32,
     paddingHorizontal: 24,
   },
+  gif: {
+    width: 340,
+    height: 340,
+    marginBottom: 4,
+  },
   title: {
-    marginTop: 12,
+    marginTop: -90,
     fontSize: 16,
     fontWeight: "600",
     color: "#111827",

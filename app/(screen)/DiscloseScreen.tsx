@@ -248,7 +248,7 @@ const { refreshOrders } = useOrders();
         buyer_address: selectedAddress.address,
         buyer_lat: selectedAddress.latitude,
         buyer_lng: selectedAddress.longitude,
-
+        buyer_phone: user.phone,
         distance_km: Number(distance),
         status: "pending",
       });

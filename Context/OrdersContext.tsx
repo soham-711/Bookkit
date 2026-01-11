@@ -1,19 +1,15 @@
 import React, {
   createContext,
+  ReactNode,
   useContext,
   useEffect,
   useState,
-  ReactNode,
 } from "react";
 import { supabase } from "../Utils/supabase";
 
 /* ---------------- TYPES ---------------- */
 
-export type OrderStatus =
-  | "pending"
-  | "confirmed"
-  | "cancelled"
-  | "completed";
+export type OrderStatus = "pending" | "confirmed" | "cancelled" | "completed";
 
 export interface Order {
   id: string;
@@ -29,7 +25,7 @@ export interface Order {
   buyer_address: string;
   buyer_lat: number;
   buyer_lng: number;
-
+  buyer_phone: string;
   seller_address: string;
   seller_lat: number;
   seller_lng: number;
@@ -40,7 +36,6 @@ export interface Order {
 
   /* OTP */
   delivery_otp: number | null;
-  
 
   /* Meta */
   created_at: string;
@@ -117,87 +112,83 @@ export const OrdersProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    setBuyerOrders(data.filter(o => o.buyer_id === user.id));
-    setSellerDeliverables(data.filter(o => o.seller_id === user.id));
+    setBuyerOrders(data.filter((o) => o.buyer_id === user.id));
+    setSellerDeliverables(data.filter((o) => o.seller_id === user.id));
 
     setLoading(false);
   };
 
   /* -------- SELLER ACCEPT ORDER -------- */
 
-//   const acceptOrder = async (orderId: string, otpHash: string) => {
-//     const { error } = await supabase
-//       .from("orders")
-//       .update({
-//         status: "confirmed",
-//         delivery_otp: otpHash,
-//         seller_response_at: new Date().toISOString(),
-//       })
-//       .eq("id", orderId);
+  //   const acceptOrder = async (orderId: string, otpHash: string) => {
+  //     const { error } = await supabase
+  //       .from("orders")
+  //       .update({
+  //         status: "confirmed",
+  //         delivery_otp: otpHash,
+  //         seller_response_at: new Date().toISOString(),
+  //       })
+  //       .eq("id", orderId);
 
-//     if (error) {
-//       console.error("Accept order failed:", error.message);
-//       return;
-//     }
+  //     if (error) {
+  //       console.error("Accept order failed:", error.message);
+  //       return;
+  //     }
 
-//     await refreshOrders();
-//   };
+  //     await refreshOrders();
+  //   };
 
+  const acceptOrder = async (orderId: string, otpHash: string) => {
+    try {
+      // 1️⃣ Get the order to know which book it belongs to
+      const { data: orderData, error: fetchError } = await supabase
+        .from("orders")
+        .select("id, book_id")
+        .eq("id", orderId)
+        .single();
 
-const acceptOrder = async (orderId: string, otpHash: string) => {
-  try {
-    // 1️⃣ Get the order to know which book it belongs to
-    const { data: orderData, error: fetchError } = await supabase
-      .from("orders")
-      .select("id, book_id")
-      .eq("id", orderId)
-      .single();
+      if (fetchError || !orderData) {
+        console.error("Order fetch failed:", fetchError?.message);
+        return;
+      }
 
-    if (fetchError || !orderData) {
-      console.error("Order fetch failed:", fetchError?.message);
-      return;
+      const bookId = orderData.book_id;
+
+      // 2️⃣ Update order status and delivery OTP
+      const { error: orderError } = await supabase
+        .from("orders")
+        .update({
+          status: "confirmed",
+          delivery_otp: otpHash,
+          seller_response_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+
+      if (orderError) {
+        console.error("Accept order failed:", orderError.message);
+        return;
+      }
+      console.log("Book ID to update:", bookId);
+
+      // 3️⃣ Mark the book as inactive
+      const { error: bookError } = await supabase
+        .from("books")
+        .update({
+          is_active: false,
+        })
+        .eq("id", bookId);
+
+      if (bookError) {
+        console.error("Failed to deactivate book:", bookError.message);
+        return;
+      }
+
+      // 4️⃣ Refresh orders
+      await refreshOrders();
+    } catch (err) {
+      console.error("Unexpected error in acceptOrder:", err);
     }
-
-    const bookId = orderData.book_id;
-
-    // 2️⃣ Update order status and delivery OTP
-    const { error: orderError } = await supabase
-      .from("orders")
-      .update({
-        status: "confirmed",
-        delivery_otp: otpHash,
-        seller_response_at: new Date().toISOString(),
-      })
-      .eq("id", orderId);
-
-    if (orderError) {
-      console.error("Accept order failed:", orderError.message);
-      return;
-    }
-console.log("Book ID to update:", bookId);
-
-    // 3️⃣ Mark the book as inactive
-    const { error: bookError } = await supabase
-      .from("books")
-      .update({
-        is_active: false,
-      })
-      .eq("id", bookId);
-
-    if (bookError) {
-      console.error("Failed to deactivate book:", bookError.message);
-      return;
-    }
-
-    // 4️⃣ Refresh orders
-    await refreshOrders();
-
-  } catch (err) {
-    console.error("Unexpected error in acceptOrder:", err);
-  }
-};
-
-
+  };
 
   /* -------- SELLER CANCEL ORDER -------- */
 

@@ -1,3 +1,5 @@
+
+
 // import { Ionicons } from "@expo/vector-icons";
 // import DateTimePicker from "@react-native-community/datetimepicker";
 // import * as ImagePicker from "expo-image-picker";
@@ -23,7 +25,9 @@
 
 // import * as FileSystem from "expo-file-system/legacy";
 // import { supabase } from "../../Utils/supabase";
-// import { Buffer } from "buffer";
+
+// import { useProfileStore } from "../../Context/ProfileContext";
+
 // interface ProfileData {
 //   name: string;
 //   mobile: string;
@@ -47,15 +51,18 @@
 //   const styles = useMemo(() => makeStyles(width, height), [width, height]);
 
 //   const [profileData, setProfileData] = useState<ProfileData>({
-//     name: "Soham Biswas",
-//     mobile: "9700919162",
-//     email: "Email@gmail.com",
-//     dob: "30/08/2000",
-//     address: "Action Area 1 1/2, 2, Newtown, N...",
+//     name: "",
+//     mobile: "",
+//     email: "",
+//     dob: "",
+//     address: "",
 //   });
 
 //   const [avatarLocalUri, setAvatarLocalUri] = useState<string | null>(null);
 //   const [avatarRemoteUrl, setAvatarRemoteUrl] = useState<string | null>(null);
+//   const [avatarToUpload, setAvatarToUpload] = useState<{
+//     uri: string;
+//   } | null>(null);
 
 //   const [pendingEmail, setPendingEmail] = useState(profileData.email);
 //   const [editingField, setEditingField] = useState<keyof ProfileData | null>(
@@ -66,6 +73,7 @@
 //   // Date picker state
 //   const [showDatePicker, setShowDatePicker] = useState(false);
 //   const [selectedDate, setSelectedDate] = useState(new Date());
+// const [imageViewerVisible, setImageViewerVisible] = useState(false)
 
 //   const formatDOBForDB = (dob: string | null) => {
 //     if (!dob) return null;
@@ -87,6 +95,8 @@
 //   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
 
 //   const inputRefs = useRef<Record<string, TextInput | null>>({});
+
+//   const { refreshProfileSilently } = useProfileStore();
 
 //   const handleChange = (field: keyof ProfileData) => {
 //     if (field === "mobile") {
@@ -132,7 +142,6 @@
 
 //   // Address management handlers
 //   const handleSelectAddress = (address: AddressItem) => {
-//     // Set all addresses to not default first
 //     const updatedAddresses = addresses.map((addr) => ({
 //       ...addr,
 //       isDefault: addr.id === address.id,
@@ -147,8 +156,6 @@
 //   // Function to redirect to address creation screen
 //   const handleAddNewAddress = () => {
 //     setShowAddressModal(false);
-//     // Navigate to your address creation screen
-//     // You can change "add-address" to your actual route name
 //     router.push("/(screen)/UserCurrentLocation");
 //   };
 
@@ -156,212 +163,227 @@
 //     setShowImagePickerModal(true);
 //   };
 
-// const uploadAvatarToSupabase = async (
-//   imageUri: string,
-//   userId: string
-// ): Promise<string | null> => {
-//   try {
-//     console.log("🔄 Uploading avatar...");
+//   // WORKING UPLOAD FUNCTION
+//   const uploadAvatarToSupabase = async (
+//     imageUri: string,
+//     userId: string
+//   ): Promise<string | null> => {
+//     try {
+//       console.log("🔄 Uploading avatar...");
 
-//     // Check if supabase is initialized
-//     if (!supabase) {
-//       console.error("❌ Supabase not initialized");
-//       return null;
-//     }
+//       // Check if supabase is initialized
+//       if (!supabase) {
+//         console.error("❌ Supabase not initialized");
+//         return null;
+//       }
 
-//     // Read the image file
-//     const base64 = await FileSystem.readAsStringAsync(imageUri, {
-//       encoding: FileSystem.EncodingType.Base64,
-//     });
-
-//     // Convert to Uint8Array (Buffer might not work in React Native)
-//     const binaryString = atob(base64);
-//     const bytes = new Uint8Array(binaryString.length);
-//     for (let i = 0; i < binaryString.length; i++) {
-//       bytes[i] = binaryString.charCodeAt(i);
-//     }
-
-//     // Use unique filename
-//     const filePath = `${userId}/avatar_${Date.now()}.jpg`;
-
-//     console.log("📤 Uploading to:", filePath);
-
-//     // Try upload with different approaches
-
-//     // Approach 1: Use ArrayBuffer
-//     const { data, error } = await supabase.storage
-//       .from("avatars")
-//       .upload(filePath, bytes.buffer, { // Use .buffer for ArrayBuffer
-//         contentType: "image/jpeg",
-//         upsert: true,
+//       // Read the image file
+//       const base64 = await FileSystem.readAsStringAsync(imageUri, {
+//         encoding: FileSystem.EncodingType.Base64,
 //       });
 
-//     if (error) {
-//       console.log("❌ ArrayBuffer failed, trying blob...");
+//       // Convert to Uint8Array
+//       const binaryString = atob(base64);
+//       const bytes = new Uint8Array(binaryString.length);
+//       for (let i = 0; i < binaryString.length; i++) {
+//         bytes[i] = binaryString.charCodeAt(i);
+//       }
 
-//       // Approach 2: Use Blob
-//       const blob = new Blob([bytes], { type: 'image/jpeg' });
+//       // Use unique filename
+//       const filePath = `${userId}/avatar_${Date.now()}.jpg`;
 
-//       const { data: data2, error: error2 } = await supabase.storage
+//       console.log("📤 Uploading to:", filePath);
+
+//       // Try upload with ArrayBuffer
+//       const { data, error } = await supabase.storage
 //         .from("avatars")
-//         .upload(filePath, blob, {
+//         .upload(filePath, bytes.buffer, {
 //           contentType: "image/jpeg",
 //           upsert: true,
 //         });
 
-//       if (error2) {
-//         console.error("❌ All upload methods failed:", error2);
-//         return null;
+//       if (error) {
+//         console.log("❌ ArrayBuffer failed, trying blob...");
+
+//         // Try with Blob
+//         const blob = new Blob([bytes], { type: "image/jpeg" });
+
+//         const { data: data2, error: error2 } = await supabase.storage
+//           .from("avatars")
+//           .upload(filePath, blob, {
+//             contentType: "image/jpeg",
+//             upsert: true,
+//           });
+
+//         if (error2) {
+//           console.error("❌ All upload methods failed:", error2);
+//           return null;
+//         }
+
+//         console.log("✅ Upload successful via blob");
+//       } else {
+//         console.log("✅ Upload successful via ArrayBuffer");
 //       }
 
-//       console.log("✅ Upload successful via blob");
-//     } else {
-//       console.log("✅ Upload successful via ArrayBuffer");
+//       // Get public URL
+//       const { data: urlData } = supabase.storage
+//         .from("avatars")
+//         .getPublicUrl(filePath);
+
+//       console.log("🔗 Public URL:", urlData.publicUrl);
+//       return urlData.publicUrl;
+//     } catch (error) {
+//       console.error("💥 Upload failed completely:", error);
+//       return null;
 //     }
-
-//     // Get public URL
-//     const { data: urlData } = supabase.storage
-//       .from("avatars")
-//       .getPublicUrl(filePath);
-
-//     console.log("🔗 Public URL:", urlData.publicUrl);
-//     return urlData.publicUrl;
-
-//   } catch (error) {
-//     console.error("💥 Upload failed completely:", error);
-//     return null;
-//   }
-// };
-
+//   };
 //   const takePhoto = async () => {
 //     setShowImagePickerModal(false);
 //     const permission = await ImagePicker.requestCameraPermissionsAsync();
-//     if (!permission.granted) return;
+//     if (!permission.granted) {
+//       Alert.alert(
+//         "Permission Required",
+//         "Camera permission is needed to take photos"
+//       );
+//       return;
+//     }
 
 //     const result = await ImagePicker.launchCameraAsync({
 //       mediaTypes: ["images"],
 //       allowsEditing: true,
 //       aspect: [1, 1],
-//       quality: 0.8,
+//       quality: 0.7,
 //     });
 
-//     if (!result.canceled) {
-//       setAvatarLocalUri(result.assets[0].uri);
+//     if (!result.canceled && result.assets[0]) {
+//       const asset = result.assets[0];
+//       setAvatarLocalUri(asset.uri);
+//       setAvatarToUpload({
+//         uri: asset.uri,
+//       });
 //       setIsDirty(true);
 //     }
-//     console.log(result);
-
 //   };
 
 //   const pickFromGallery = async () => {
 //     setShowImagePickerModal(false);
 //     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-//     if (!permission.granted) return;
+//     if (!permission.granted) {
+//       Alert.alert(
+//         "Permission Required",
+//         "Gallery permission is needed to select photos"
+//       );
+//       return;
+//     }
 
 //     const result = await ImagePicker.launchImageLibraryAsync({
 //       mediaTypes: ["images"],
 //       allowsEditing: true,
 //       aspect: [1, 1],
-//       quality: 0.1,
+//       quality: 0.7,
 //     });
 
-//     if (!result.canceled) {
-//       setAvatarLocalUri(result.assets[0].uri);
+//     if (!result.canceled && result.assets[0]) {
+//       const asset = result.assets[0];
+//       setAvatarLocalUri(asset.uri);
+//       setAvatarToUpload({
+//         uri: asset.uri,
+//       });
 //       setIsDirty(true);
-//       let type = result?.assets?.[0].type;
-//       if (result.assets[0].uri && type && userId) {
-//         uploadAvatarToSupabase(result.assets[0].uri, userId);
-//       }
-
 //     }
-
 //   };
 
 //   const isValidEmail = (email: string) =>
 //     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
-//   // const updateProfile = async () => {
-//   //   if (!userId) return;
-
-//   //   if (!isValidEmail(pendingEmail)) {
-//   //     Alert.alert("Invalid email");
-//   //     return;
-//   //   }
-
-//   //   setSaving(true);
-
-//   //   // 🔹 Update profile table (DOB FIXED)
-//   //   const { error: profileError } = await supabase
-//   //     .from("profiles")
-//   //     .update({
-//   //       full_name: profileData.name.trim(),
-//   //       email: pendingEmail.trim(),
-//   //       date_of_birth: formatDOBForDB(profileData.dob),
-//   //       updated_at: new Date().toISOString(),
-//   //     })
-//   //     .eq("user_id", userId);
-
-//   //   if (profileError) {
-//   //     Alert.alert("Error", profileError.message);
-//   //     setSaving(false);
-//   //     return;
-//   //   }
-
-//   //   // 🔹 Update default address
-//   //   const selected = addresses.find((a) => a.isDefault);
-//   //   if (selected) {
-//   //     await supabase
-//   //       .from("addresses")
-//   //       .update({ is_default: false })
-//   //       .eq("user_id", userId);
-
-//   //     await supabase
-//   //       .from("addresses")
-//   //       .update({ is_default: true })
-//   //       .eq("id", selected.id);
-//   //   }
-
-//   //   setIsDirty(false);
-//   //   setEditingField(null);
-//   //   setSaving(false);
-
-//   //   Alert.alert("Success", "Profile updated successfully");
-//   // };
-
 //   const updateProfile = async () => {
-//     if (!userId) return;
+//     if (!userId) {
+//       Alert.alert("Error", "User not found");
+//       return;
+//     }
 
 //     if (!isValidEmail(pendingEmail)) {
-//       Alert.alert("Invalid email");
+//       Alert.alert("Invalid Email", "Please enter a valid email address");
 //       return;
 //     }
 
 //     try {
 //       setSaving(true);
-
-//       // ✅ Keep existing avatar by default
 //       let finalAvatarUrl = avatarRemoteUrl;
 
-//       // ✅ Upload ONLY if a new image was picked
-//       // if (avatarLocalUri) {
-//       //   finalAvatarUrl = await uploadAvatarToSupabase(userId, avatarLocalUri);
-//       // }
+//       // Upload avatar only if a new image was selected
+//       if (avatarToUpload && avatarToUpload.uri) {
+//         console.log("📸 Uploading new avatar...");
+//         const uploadedUrl = await uploadAvatarToSupabase(
+//           avatarToUpload.uri,
+//           userId
+//         );
 
-//       // 🔹 Update profile table (DO NOT overwrite avatar with null)
+//         if (uploadedUrl) {
+//           finalAvatarUrl = uploadedUrl;
+
+//           console.log("✅ Avatar URL updated:", finalAvatarUrl);
+//         } else {
+//           // If upload fails, keep the old avatar URL
+//           console.log("⚠️ Avatar upload failed, keeping previous image");
+//         }
+//       }
+
+//       // Format DOB for database
+//       const formattedDOB = formatDOBForDB(profileData.dob);
+
+//       // Validate DOB before sending to database
+//       if (formattedDOB === null && profileData.dob) {
+//         console.error("Invalid DOB format:", profileData.dob);
+//         Alert.alert(
+//           "Invalid Date of Birth",
+//           "Please reset your DOB again. Use format DD/MM/YYYY"
+//         );
+//         setSaving(false);
+//         return;
+//       }
+
+//       // Prepare update data
+//       const updateData: any = {
+//         full_name: profileData.name.trim(),
+//         email: pendingEmail.trim(),
+//         avatar_url: finalAvatarUrl,
+//         updated_at: new Date().toISOString(),
+//       };
+
+//       // Only add date_of_birth if it's valid and not null
+//       if (formattedDOB !== null) {
+//         updateData.date_of_birth = formattedDOB;
+//       }
+
+//       console.log("Updating profile with data:", updateData);
+
+//       // Update profile in Supabase database
 //       const { error: profileError } = await supabase
 //         .from("profiles")
-//         .update({
-//           full_name: profileData.name.trim(),
-//           email: pendingEmail.trim(),
-//           date_of_birth: formatDOBForDB(profileData.dob),
-//           ...(finalAvatarUrl ? { avatar_url: finalAvatarUrl } : {}),
-//           updated_at: new Date().toISOString(),
-//         })
+//         .update(updateData)
 //         .eq("user_id", userId);
 
-//       if (profileError) throw profileError;
+//       if (profileError) {
+//         console.error("Profile update error:", profileError);
 
-//       // 🔹 Update default address
+//         // Check if error is related to date format
+//         if (
+//           profileError.code === "22007" || // PostgreSQL invalid date format error
+//           profileError.message.includes("date") ||
+//           profileError.message.includes("DOB")
+//         ) {
+//           Alert.alert(
+//             "Date of Birth Error",
+//             "Please reset your DOB again. Use format DD/MM/YYYY"
+//           );
+//         } else {
+//           throw profileError;
+//         }
+//         return;
+//       }
+
+//       // Update default address if needed
 //       const selected = addresses.find((a) => a.isDefault);
 //       if (selected) {
 //         await supabase
@@ -375,17 +397,31 @@
 //           .eq("id", selected.id);
 //       }
 
-//       // ✅ Sync state after save
-//       setAvatarRemoteUrl(finalAvatarUrl ?? avatarRemoteUrl);
+//       // Update local state
+//       setAvatarRemoteUrl(finalAvatarUrl);
 //       setAvatarLocalUri(null);
+//       setAvatarToUpload(null);
 //       setIsDirty(false);
 //       setEditingField(null);
-//       setAvatarLocalUri(null);
-//       setAvatarRemoteUrl(finalAvatarUrl ?? avatarRemoteUrl);
-
-//       Alert.alert("Success", "Profile updated successfully");
+//       await refreshProfileSilently();
+//       Alert.alert("Success", "Profile updated successfully!");
 //     } catch (err: any) {
-//       Alert.alert("Error", err.message || "Something went wrong");
+//       console.error("Update error:", err);
+
+//       // Check if error is date-related
+//       if (
+//         err.code === "22007" ||
+//         err.message?.includes("date") ||
+//         err.message?.includes("DOB") ||
+//         err.message?.includes("invalid input syntax")
+//       ) {
+//         Alert.alert(
+//           "Date of Birth Error",
+//           "Please reset your DOB again. Use format DD/MM/YYYY"
+//         );
+//       } else {
+//         Alert.alert("Error", err.message || "Failed to update profile");
+//       }
 //     } finally {
 //       setSaving(false);
 //     }
@@ -397,56 +433,79 @@
 //     const loadProfile = async () => {
 //       setLoading(true);
 
-//       const {
-//         data: { user },
-//       } = await supabase.auth.getUser();
+//       try {
+//         const {
+//           data: { user },
+//         } = await supabase.auth.getUser();
 
-//       if (!user) return;
+//         if (!user) {
+//           Alert.alert("Error", "Please log in to view profile");
+//           router.back();
+//           return;
+//         }
 
-//       setUserId(user.id);
+//         setUserId(user.id);
 
-//       // 🔹 Fetch profile
-//       const { data: profile } = await supabase
-//         .from("profiles")
-//         .select("*")
-//         .eq("user_id", user.id)
-//         .single();
+//         // Fetch profile
+//         const { data: profile, error: profileError } = await supabase
+//           .from("profiles")
+//           .select("*")
+//           .eq("user_id", user.id)
+//           .single();
 
-//       if (profile) {
-//         setAvatarRemoteUrl(profile.avatar_url || null);
-//         setProfileData({
-//           name: profile.full_name || "",
-//           mobile: user.phone || "",
-//           email: profile.email || "",
-//           dob: profile.date_of_birth || "",
-//           address: profile.default_address || "",
-//         });
-//         setPendingEmail(profile.email || "");
-//       }
+//         if (profileError) throw profileError;
 
-//       // 🔹 Fetch addresses
-//       const { data: addr } = await supabase
-//         .from("addresses")
-//         .select("*")
-//         .eq("user_id", user.id);
+//         if (profile) {
+//           // Add timestamp to prevent caching
+//           const avatarUrl = profile.avatar_url
+//             ? `${profile.avatar_url}?t=${Date.now()}`
+//             : null;
 
-//       if (addr) {
-//         setAddresses(
-//           addr.map((a) => ({
+//           setAvatarRemoteUrl(avatarUrl);
+
+//           setProfileData({
+//             name: profile.full_name || "",
+//             mobile: user.phone || "",
+//             email: profile.email || "",
+//             dob: profile.date_of_birth || "",
+//             address: profile.default_address || "",
+//           });
+//           setPendingEmail(profile.email || "");
+//         }
+
+//         // Fetch addresses
+//         const { data: addr, error: addrError } = await supabase
+//           .from("addresses")
+//           .select("*")
+//           .eq("user_id", user.id)
+//           .order("is_default", { ascending: false });
+
+//         if (addrError) throw addrError;
+
+//         if (addr) {
+//           const formattedAddresses = addr.map((a) => ({
 //             id: a.id,
 //             title: a.address_type,
 //             address: a.full_address,
 //             isDefault: a.is_default,
-//           }))
-//         );
+//           }));
 
-//         const def = addr.find((a) => a.is_default);
-//         if (def) {
-//           setProfileData((p) => ({ ...p, address: def.full_address }));
+//           setAddresses(formattedAddresses);
+
+//           const defaultAddr = addr.find((a) => a.is_default);
+//           if (defaultAddr) {
+//             setProfileData((p) => ({
+//               ...p,
+//               address: defaultAddr.full_address,
+//             }));
+//           }
 //         }
+//       } catch (error: any) {
+//         console.error("Load profile error:", error);
+//         Alert.alert("Error", "Failed to load profile data");
+//       } finally {
+//         setLoading(false);
 //       }
-
-//       setLoading(false);
 //     };
 
 //     loadProfile();
@@ -462,7 +521,7 @@
 
 //   return (
 //     <LinearGradient
-//       colors={["#67E8F9", "#E0E7FF"]}
+//       colors={["#ffffffff", "#aff6f6ff"]}
 //       start={{ x: 0, y: 0 }}
 //       end={{ x: 1, y: 1 }}
 //       style={styles.container}
@@ -472,7 +531,7 @@
 //         <View style={styles.header}>
 //           <TouchableOpacity
 //             style={styles.backButton}
-//             onPress={() => router.back()}
+//             onPress={() => router.push("/(screen)/Profile")}
 //           >
 //             <Ionicons name="arrow-back" size={22} color="black" />
 //             <Text style={styles.headerText}>Your profile</Text>
@@ -483,19 +542,22 @@
 //         <View style={styles.hero}>
 //           <View style={styles.avatarContainer}>
 //             <View style={styles.avatarWrapper}>
-//               <View style={styles.avatarRing}>
+//               <TouchableOpacity  onPress={() => setImageViewerVisible(true)}
+//                 activeOpacity={0.8}>
+//                 <View style={styles.avatarRing}>
 //                 <Image
 //                   source={
 //                     avatarLocalUri
 //                       ? { uri: avatarLocalUri }
 //                       : avatarRemoteUrl
-//                       ? { uri: avatarRemoteUrl + "?t=" + Date.now() }
+//                       ? { uri: avatarRemoteUrl }
 //                       : require("../../assets/images/profile.png")
 //                   }
 //                   style={styles.profileImage}
 //                   resizeMode="cover"
 //                 />
 //               </View>
+//               </TouchableOpacity>
 
 //               <TouchableOpacity
 //                 style={styles.editBadge}
@@ -579,14 +641,14 @@
 //           </View>
 //         </ImageBackground>
 
-//         {/* Update Profile Button */}
+//         {/* Update Profile Button - NOW CONNECTED TO updateProfile */}
 //         <TouchableOpacity
 //           style={[styles.updateButton, !isDirty && styles.updateButtonDisabled]}
 //           disabled={!isDirty || saving}
-//           // onPress={updateProfile}
+//           onPress={updateProfile} // This is now connected
 //         >
 //           {saving ? (
-//             <ActivityIndicator color="#fff" />
+//             <ActivityIndicator color="#ffffffff" />
 //           ) : (
 //             <Text style={styles.updateButtonText}>Update profile</Text>
 //           )}
@@ -741,12 +803,11 @@
 //                 activeOpacity={0.7}
 //               >
 //                 <LinearGradient
-//                   colors={["#3B82F6", "#1D4ED8"]}
+//                   colors={["#3B82F6", "#4979ffff"]}
 //                   start={{ x: 0, y: 0 }}
 //                   end={{ x: 1, y: 0 }}
 //                   style={styles.addAddressButtonGradient}
 //                 >
-//                   <Ionicons name="add-circle" size={22} color="#FFFFFF" />
 //                   <Text style={styles.addAddressButtonText}>
 //                     Add New Address
 //                   </Text>
@@ -756,10 +817,39 @@
 //           </View>
 //         </View>
 //       </Modal>
+
+//       <Modal
+//         visible={imageViewerVisible}
+//         transparent={true}
+//         animationType="fade"
+//         onRequestClose={() => setImageViewerVisible(false)}
+//       >
+//         <View style={styles.imageViewerContainer}>
+//           <TouchableOpacity
+//             style={styles.closeButton}
+//             onPress={() => setImageViewerVisible(false)}
+//             activeOpacity={0.8}
+//           >
+//             <Ionicons name="close" size={30} color="#FFFFFF" />
+//           </TouchableOpacity>
+//           <Image
+//             source={
+//                     avatarLocalUri
+//                       ? { uri: avatarLocalUri }
+//                       : avatarRemoteUrl
+//                       ? { uri: avatarRemoteUrl }
+//                       : require("../../assets/images/profile.png")
+//                   }
+//             style={styles.fullScreenImage}
+//             resizeMode="contain"
+//           />
+//         </View>
+//       </Modal>
 //     </LinearGradient>
 //   );
 // };
 
+// // Field component remains the same...
 // function Field({
 //   styles,
 //   label,
@@ -813,6 +903,7 @@
 //               keyboardType={keyboardType || "default"}
 //               returnKeyType="done"
 //               autoCapitalize="none"
+//               autoFocus={true}
 //             />
 //           ) : (
 //             <Text
@@ -839,6 +930,7 @@
 //   );
 // }
 
+// // makeStyles function remains exactly the same...
 // const makeStyles = (width: number, height: number) => {
 //   const s = (n: number) => (width / 375) * n;
 //   const r = (n: number) => Math.round(n);
@@ -917,7 +1009,20 @@
 //       alignItems: "center",
 //       justifyContent: "center",
 //     },
+// // Image Viewer Styles
+//     imageViewerContainer: {
+//       flex: 1,
+//       backgroundColor: "rgba(0,0,0,0.95)",
+//       justifyContent: "center",
+//       alignItems: "center",
+//     },
 
+//     fullScreenImage: {
+//       width: width * 0.9,
+//       height: height * 0.65,
+//       maxWidth: 600,
+//       maxHeight: 800,
+//     },
 //     formCard: {
 //       minHeight: clamp(s(360), 320, 420),
 //       marginBottom: clamp(s(16), 12, 20),
@@ -962,7 +1067,7 @@
 //       borderRadius: 10,
 //       borderWidth: 1,
 //       borderColor: "#44D6FF",
-//       backgroundColor: "rgba(255, 255, 255, 0.36)",
+//       backgroundColor: "rgba(255, 255, 255, 0.45)",
 //       paddingHorizontal: clamp(s(14), 12, 16),
 //       alignItems: "center",
 //       flexDirection: "row",
@@ -970,8 +1075,8 @@
 //     },
 
 //     boxRowDisabled: {
-//       borderColor: "rgba(120,120,120,0.35)",
-//       backgroundColor: "rgba(120,120,120,0.42)",
+//       borderColor: "#44D6FF",
+//       backgroundColor: "rgba(118, 192, 200, 0.42)",
 //     },
 
 //     fieldLeftContent: {
@@ -1019,7 +1124,7 @@
 //     updateButton: {
 //       height: clamp(s(50), 46, 54),
 //       borderRadius: 12,
-//       backgroundColor: "rgba(20, 218, 232, 0.9)",
+//       backgroundColor: "rgba(44, 241, 255, 0.9)",
 //       borderWidth: 1,
 //       borderColor: "rgba(0,0,0,0.08)",
 //       alignItems: "center",
@@ -1035,12 +1140,12 @@
 //       }),
 //     },
 
-//     updateButtonDisabled: { opacity: 0.45 },
+//     updateButtonDisabled: { opacity: 0.6 },
 
 //     updateButtonText: {
 //       fontSize: clamp(s(16), 14, 17),
 //       fontWeight: "700",
-//       color: "rgba(255,255,255,0.78)",
+//       color: "rgba(255, 255, 255, 1)",
 //     },
 
 //     // Image Picker Modal Styles
@@ -1296,6 +1401,7 @@
 
 // export default ProfileScreen;
 
+
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
@@ -1308,6 +1414,7 @@ import {
   FlatList,
   Image,
   ImageBackground,
+  KeyboardAvoidingView, // Added
   Modal,
   Platform,
   ScrollView,
@@ -1347,11 +1454,11 @@ const ProfileScreen: React.FC = () => {
   const styles = useMemo(() => makeStyles(width, height), [width, height]);
 
   const [profileData, setProfileData] = useState<ProfileData>({
-    name: "Soham Biswas",
-    mobile: "9700919162",
-    email: "Email@gmail.com",
-    dob: "30/08/2000",
-    address: "Action Area 1 1/2, 2, Newtown, N...",
+    name: "",
+    mobile: "",
+    email: "",
+    dob: "",
+    address: "",
   });
 
   const [avatarLocalUri, setAvatarLocalUri] = useState<string | null>(null);
@@ -1369,6 +1476,7 @@ const ProfileScreen: React.FC = () => {
   // Date picker state
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
 
   const formatDOBForDB = (dob: string | null) => {
     if (!dob) return null;
@@ -1532,146 +1640,6 @@ const ProfileScreen: React.FC = () => {
       return null;
     }
   };
-
-  // const uploadAvatarToSupabase = async (
-  //   imageUri: string,
-  //   userId: string
-  // ): Promise<string | null> => {
-  //   try {
-  //     console.log("🔄 Uploading avatar...");
-
-  //     if (!supabase) {
-  //       console.error("❌ Supabase not initialized");
-  //       return null;
-  //     }
-
-  //     // Step 1: First upload the new avatar
-  //     console.log("📤 Uploading new avatar...");
-
-  //     // Read the image file
-  //     const base64 = await FileSystem.readAsStringAsync(imageUri, {
-  //       encoding: FileSystem.EncodingType.Base64,
-  //     });
-
-  //     // Convert to Uint8Array
-  //     const binaryString = atob(base64);
-  //     const bytes = new Uint8Array(binaryString.length);
-  //     for (let i = 0; i < binaryString.length; i++) {
-  //       bytes[i] = binaryString.charCodeAt(i);
-  //     }
-
-  //     // Create new filename with timestamp (we'll rename later)
-  //     const timestamp = Date.now();
-  //     const tempFilePath = `${userId}/avatar_new_${timestamp}.jpg`;
-  //     const finalFilePath = `${userId}/avatar.jpg`;
-
-  //     console.log("📤 Uploading temp file to:", tempFilePath);
-
-  //     // Upload as temp file first
-  //     const { data, error } = await supabase.storage
-  //       .from("avatars")
-  //       .upload(tempFilePath, bytes.buffer, {
-  //         contentType: "image/jpeg",
-  //         upsert: false, // Don't overwrite, this should be a new file
-  //       });
-
-  //     if (error) {
-  //       console.log("❌ ArrayBuffer failed, trying blob...");
-
-  //       const blob = new Blob([bytes], { type: 'image/jpeg' });
-
-  //       const { data: data2, error: error2 } = await supabase.storage
-  //         .from("avatars")
-  //         .upload(tempFilePath, blob, {
-  //           contentType: "image/jpeg",
-  //           upsert: false,
-  //         });
-
-  //       if (error2) {
-  //         console.error("❌ All upload methods failed:", error2);
-  //         return null;
-  //       }
-
-  //       console.log("✅ Temp upload successful via blob");
-  //     } else {
-  //       console.log("✅ Temp upload successful via ArrayBuffer");
-  //     }
-
-  //     // Step 2: Delete all old avatars (except the new temp one)
-  //     try {
-  //       console.log("🗑️ Cleaning up old avatars...");
-
-  //       const { data: oldFiles, error: listError } = await supabase.storage
-  //         .from("avatars")
-  //         .list(userId);
-
-  //       if (!listError && oldFiles) {
-  //         // Filter out the temp file we just uploaded
-  //         const filesToDelete = oldFiles
-  //           .filter(file => file.name !== `avatar_new_${timestamp}.jpg`)
-  //           .map(file => `${userId}/${file.name}`);
-
-  //         if (filesToDelete.length > 0) {
-  //           console.log("🗑️ Deleting old files:", filesToDelete);
-
-  //           const { error: deleteError } = await supabase.storage
-  //             .from("avatars")
-  //             .remove(filesToDelete);
-
-  //           if (deleteError) {
-  //             console.error("⚠️ Error deleting old files:", deleteError);
-  //           } else {
-  //             console.log("✅ Successfully deleted old avatars");
-  //           }
-  //         }
-  //       }
-  //     } catch (cleanupError) {
-  //       console.error("⚠️ Error during cleanup:", cleanupError);
-  //     }
-
-  //     // Step 3: Rename temp file to final name (avatar.jpg)
-  //     try {
-  //       console.log("🔄 Renaming temp file to avatar.jpg...");
-
-  //       // Copy temp file to final location
-  //       const { error: copyError } = await supabase.storage
-  //         .from("avatars")
-  //         .copy(tempFilePath, finalFilePath);
-
-  //       if (copyError) {
-  //         console.error("❌ Error copying file:", copyError);
-  //         // If copy fails, use temp file URL
-  //         const { data: tempUrlData } = supabase.storage
-  //           .from("avatars")
-  //           .getPublicUrl(tempFilePath);
-  //         return tempUrlData.publicUrl;
-  //       }
-
-  //       // Delete the temp file
-  //       await supabase.storage
-  //         .from("avatars")
-  //         .remove([tempFilePath]);
-
-  //       console.log("✅ File renamed successfully");
-
-  //     } catch (renameError) {
-  //       console.error("⚠️ Error renaming file:", renameError);
-  //     }
-
-  //     // Get public URL for the final file
-  //     const { data: urlData } = supabase.storage
-  //       .from("avatars")
-  //       .getPublicUrl(finalFilePath);
-
-  //     console.log("🔗 Final public URL:", urlData.publicUrl);
-  //     return urlData.publicUrl;
-
-  //   } catch (error) {
-  //     console.error("💥 Upload failed completely:", error);
-  //     return null;
-  //   }
-  // };
-
   const takePhoto = async () => {
     setShowImagePickerModal(false);
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -1730,87 +1698,6 @@ const ProfileScreen: React.FC = () => {
 
   const isValidEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-
-  // UPDATED PROFILE UPDATE FUNCTION
-  // const updateProfile = async () => {
-  //   if (!userId) {
-  //     Alert.alert("Error", "User not found");
-  //     return;
-  //   }
-
-  //   if (!isValidEmail(pendingEmail)) {
-  //     Alert.alert("Invalid Email", "Please enter a valid email address");
-  //     return;
-  //   }
-
-  //   try {
-  //     setSaving(true);
-  //     let finalAvatarUrl = avatarRemoteUrl;
-
-  //     // Upload avatar only if a new image was selected
-  //     if (avatarToUpload && avatarToUpload.uri) {
-  //       console.log("📸 Uploading new avatar...");
-  //       const uploadedUrl = await uploadAvatarToSupabase(
-  //         avatarToUpload.uri,
-  //         userId
-  //       );
-
-  //       if (uploadedUrl) {
-  //         finalAvatarUrl = uploadedUrl;
-  //         console.log("✅ Avatar URL updated:", finalAvatarUrl);
-  //       } else {
-  //         // If upload fails, keep the old avatar URL
-  //         console.log("⚠️ Avatar upload failed, keeping previous image");
-  //       }
-  //     }
-
-  //     // Update profile in Supabase database
-  //     const { error: profileError } = await supabase
-  //       .from("profiles")
-  //       .update({
-  //         full_name: profileData.name.trim(),
-  //         email: pendingEmail.trim(),
-  //         date_of_birth: formatDOBForDB(profileData.dob),
-  //         avatar_url: finalAvatarUrl, // This will be null if no new image
-  //         updated_at: new Date().toISOString(),
-  //       })
-  //       .eq("user_id", userId);
-
-  //     if (profileError) {
-  //       console.error("Profile update error:", profileError);
-  //       throw profileError;
-  //     }
-
-  //     // Update default address if needed
-  //     const selected = addresses.find((a) => a.isDefault);
-  //     if (selected) {
-  //       await supabase
-  //         .from("addresses")
-  //         .update({ is_default: false })
-  //         .eq("user_id", userId);
-
-  //       await supabase
-  //         .from("addresses")
-  //         .update({ is_default: true })
-  //         .eq("id", selected.id);
-  //     }
-
-  //     // Update local state
-  //     setAvatarRemoteUrl(finalAvatarUrl);
-  //     setAvatarLocalUri(null);
-  //     setAvatarToUpload(null);
-  //     setIsDirty(false);
-  //     setEditingField(null);
-
-  //     Alert.alert("Success", "Profile updated successfully!");
-
-  //   } catch (err: any) {
-  //     console.error("Update error:", err);
-  //     Alert.alert("Error", err.message || "Failed to update profile");
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
 
   const updateProfile = async () => {
     if (!userId) {
@@ -2037,136 +1924,154 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <LinearGradient
-      colors={["#67E8F9", "#E0E7FF"]}
+      colors={["#ffffffff", "#aff6f6ff"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.push("/(screen)/Profile")}
-          >
-            <Ionicons name="arrow-back" size={22} color="black" />
-            <Text style={styles.headerText}>Your profile</Text>
-          </TouchableOpacity>
-        </View>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 5}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.push("/(screen)/Profile")}
+            >
+              <Ionicons name="arrow-back" size={22} color="black" />
+              <Text style={styles.headerText}>Your profile</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Avatar */}
-        <View style={styles.hero}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatarWrapper}>
-              <View style={styles.avatarRing}>
-                <Image
-                  source={
-                    avatarLocalUri
-                      ? { uri: avatarLocalUri }
-                      : avatarRemoteUrl
-                      ? { uri: avatarRemoteUrl }
-                      : require("../../assets/images/profile.png")
-                  }
-                  style={styles.profileImage}
-                  resizeMode="cover"
-                />
+          {/* Avatar */}
+          <View style={styles.hero}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarWrapper}>
+                <TouchableOpacity
+                  onPress={() => setImageViewerVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.avatarRing}>
+                    <Image
+                      source={
+                        avatarLocalUri
+                          ? { uri: avatarLocalUri }
+                          : avatarRemoteUrl
+                          ? { uri: avatarRemoteUrl }
+                          : require("../../assets/images/profile.png")
+                      }
+                      style={styles.profileImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.editBadge}
+                  onPress={onPressCamera}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="camera" size={14} color="#11a7ecff" />
+                </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={styles.editBadge}
-                onPress={onPressCamera}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="camera" size={14} color="#11a7ecff" />
-              </TouchableOpacity>
             </View>
           </View>
-        </View>
 
-        {/* Card Background */}
-        <ImageBackground
-          source={require("../../assets/images/Editprofile.png")}
-          style={styles.formCard}
-          imageStyle={styles.formCardImage}
-          resizeMode="stretch"
-        >
-          <View style={styles.formContent}>
-            <Field
-              styles={styles}
-              label="Name"
-              value={profileData.name}
-              editable={editingField === "name"}
-              disabledAction={isEditing && editingField !== "name"}
-              onPressChange={() => handleChange("name")}
-              onChangeText={(t) => {
-                setProfileData((p) => ({ ...p, name: t }));
-                setIsDirty(true);
-              }}
-              inputRef={(r) => (inputRefs.current["name"] = r)}
-              onBlur={stopEditing}
-            />
+          {/* Card Background */}
+          <ImageBackground
+            source={require("../../assets/images/Editprofile.png")}
+            style={styles.formCard}
+            imageStyle={styles.formCardImage}
+            resizeMode="stretch"
+          >
+            <View style={styles.formContent}>
+              <Field
+                styles={styles}
+                label="Name"
+                value={profileData.name}
+                editable={editingField === "name"}
+                disabledAction={isEditing && editingField !== "name"}
+                onPressChange={() => handleChange("name")}
+                onChangeText={(t) => {
+                  setProfileData((p) => ({ ...p, name: t }));
+                  setIsDirty(true);
+                }}
+                inputRef={(r) => (inputRefs.current["name"] = r)}
+                onBlur={stopEditing}
+              />
 
-            <Field
-              styles={styles}
-              label="Mobile"
-              value={profileData.mobile}
-              disabled={true}
-              disabledAction={true}
-              onPressChange={() => handleChange("mobile")}
-              icon="lock-closed"
-            />
+              <Field
+                styles={styles}
+                label="Mobile"
+                value={profileData.mobile}
+                disabled={true}
+                disabledAction={true}
+                onPressChange={() => handleChange("mobile")}
+                icon="lock-closed"
+              />
 
-            <Field
-              styles={styles}
-              label="Email"
-              value={
-                editingField === "email" ? pendingEmail : profileData.email
-              }
-              editable={editingField === "email"}
-              disabledAction={isEditing && editingField !== "email"}
-              onPressChange={() => handleChange("email")}
-              onChangeText={(t) => {
-                setPendingEmail(t);
-                setIsDirty(true);
-              }}
-              inputRef={(r) => (inputRefs.current["email"] = r)}
-              keyboardType="email-address"
-              onBlur={stopEditing}
-            />
+              <Field
+                styles={styles}
+                label="Email"
+                value={
+                  editingField === "email" ? pendingEmail : profileData.email
+                }
+                editable={editingField === "email"}
+                disabledAction={isEditing && editingField !== "email"}
+                onPressChange={() => handleChange("email")}
+                onChangeText={(t) => {
+                  setPendingEmail(t);
+                  setIsDirty(true);
+                }}
+                inputRef={(r) => (inputRefs.current["email"] = r)}
+                keyboardType="email-address"
+                onBlur={stopEditing}
+              />
 
-            <Field
-              styles={styles}
-              label="Date of birth"
-              value={profileData.dob}
-              disabledAction={isEditing && editingField !== "dob"}
-              onPressChange={() => handleChange("dob")}
-              icon="calendar"
-            />
+              <Field
+                styles={styles}
+                label="Date of birth"
+                value={profileData.dob}
+                disabledAction={isEditing && editingField !== "dob"}
+                onPressChange={() => handleChange("dob")}
+                icon="calendar"
+              />
 
-            <Field
-              styles={styles}
-              label="Address"
-              value={profileData.address}
-              disabledAction={isEditing && editingField !== "address"}
-              onPressChange={() => handleChange("address")}
-              icon="location"
-            />
-          </View>
-        </ImageBackground>
+              <Field
+                styles={styles}
+                label="Address"
+                value={profileData.address}
+                disabledAction={isEditing && editingField !== "address"}
+                onPressChange={() => handleChange("address")}
+                icon="location"
+              />
+            </View>
+          </ImageBackground>
 
-        {/* Update Profile Button - NOW CONNECTED TO updateProfile */}
-        <TouchableOpacity
-          style={[styles.updateButton, !isDirty && styles.updateButtonDisabled]}
-          disabled={!isDirty || saving}
-          onPress={updateProfile} // This is now connected
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.updateButtonText}>Update profile</Text>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
+          {/* Update Profile Button - NOW CONNECTED TO updateProfile */}
+          <TouchableOpacity
+            style={[
+              styles.updateButton,
+              !isDirty && styles.updateButtonDisabled,
+            ]}
+            disabled={!isDirty || saving}
+            onPress={updateProfile} // This is now connected
+          >
+            {saving ? (
+              <ActivityIndicator color="#ffffffff" />
+            ) : (
+              <Text style={styles.updateButtonText}>Update profile</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Date Picker Modal */}
       {showDatePicker && (
@@ -2316,12 +2221,11 @@ const ProfileScreen: React.FC = () => {
                 activeOpacity={0.7}
               >
                 <LinearGradient
-                  colors={["#3B82F6", "#1D4ED8"]}
+                  colors={["#3B82F6", "#4979ffff"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.addAddressButtonGradient}
                 >
-                  <Ionicons name="add-circle" size={22} color="#FFFFFF" />
                   <Text style={styles.addAddressButtonText}>
                     Add New Address
                   </Text>
@@ -2329,6 +2233,34 @@ const ProfileScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={imageViewerVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setImageViewerVisible(false)}
+      >
+        <View style={styles.imageViewerContainer}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setImageViewerVisible(false)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={30} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Image
+            source={
+              avatarLocalUri
+                ? { uri: avatarLocalUri }
+                : avatarRemoteUrl
+                ? { uri: avatarRemoteUrl }
+                : require("../../assets/images/profile.png")
+            }
+            style={styles.fullScreenImage}
+            resizeMode="contain"
+          />
         </View>
       </Modal>
     </LinearGradient>
@@ -2389,6 +2321,7 @@ function Field({
               keyboardType={keyboardType || "default"}
               returnKeyType="done"
               autoCapitalize="none"
+              autoFocus={true}
             />
           ) : (
             <Text
@@ -2494,7 +2427,20 @@ const makeStyles = (width: number, height: number) => {
       alignItems: "center",
       justifyContent: "center",
     },
+    // Image Viewer Styles
+    imageViewerContainer: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.95)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
 
+    fullScreenImage: {
+      width: width * 0.9,
+      height: height * 0.65,
+      maxWidth: 600,
+      maxHeight: 800,
+    },
     formCard: {
       minHeight: clamp(s(360), 320, 420),
       marginBottom: clamp(s(16), 12, 20),
@@ -2539,7 +2485,7 @@ const makeStyles = (width: number, height: number) => {
       borderRadius: 10,
       borderWidth: 1,
       borderColor: "#44D6FF",
-      backgroundColor: "rgba(255, 255, 255, 0.36)",
+      backgroundColor: "rgba(255, 255, 255, 0.45)",
       paddingHorizontal: clamp(s(14), 12, 16),
       alignItems: "center",
       flexDirection: "row",
@@ -2547,8 +2493,8 @@ const makeStyles = (width: number, height: number) => {
     },
 
     boxRowDisabled: {
-      borderColor: "rgba(120,120,120,0.35)",
-      backgroundColor: "rgba(120,120,120,0.42)",
+      borderColor: "#44D6FF",
+      backgroundColor: "rgba(118, 192, 200, 0.42)",
     },
 
     fieldLeftContent: {
@@ -2596,7 +2542,7 @@ const makeStyles = (width: number, height: number) => {
     updateButton: {
       height: clamp(s(50), 46, 54),
       borderRadius: 12,
-      backgroundColor: "rgba(20, 218, 232, 0.9)",
+      backgroundColor: "rgba(44, 241, 255, 0.9)",
       borderWidth: 1,
       borderColor: "rgba(0,0,0,0.08)",
       alignItems: "center",
@@ -2612,12 +2558,12 @@ const makeStyles = (width: number, height: number) => {
       }),
     },
 
-    updateButtonDisabled: { opacity: 0.45 },
+    updateButtonDisabled: { opacity: 0.6 },
 
     updateButtonText: {
       fontSize: clamp(s(16), 14, 17),
       fontWeight: "700",
-      color: "rgba(255,255,255,0.78)",
+      color: "rgba(255, 255, 255, 1)",
     },
 
     // Image Picker Modal Styles

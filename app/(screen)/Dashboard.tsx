@@ -1,4 +1,4 @@
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -239,18 +239,11 @@ const Dashboard = () => {
                 activeOpacity={0.7}
                 onPress={() => router.push("/(screen)/GoldSection")}
               >
-                <LinearGradient
-                  colors={["#FFD700", "#FFA500"]}
-                  style={styles.coinIconWrapper}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <MaterialIcons
-                    name="currency-rupee"
-                    size={scale(16, width)}
-                    color="#FFFFFF"
-                  />
-                </LinearGradient>
+                <Image
+                  source={require("../../assets/images/Front-coin.png")} // <-- add your coin image here
+                  style={styles.coinImage}
+                  contentFit="contain"
+                />
                 <Text style={styles.coinText}>0</Text>
               </TouchableOpacity>
 
@@ -450,7 +443,7 @@ const Dashboard = () => {
         </View>
       </LinearGradient>
 
-      <View style={{ height: insets.bottom, backgroundColor: "#111111" }} />
+      <View style={{ height: insets.bottom, backgroundColor: "#ebf6ff" }} />
     </View>
   );
 };
@@ -693,6 +686,12 @@ const createStyles = (width: number, height: number) => {
       fontWeight: "700",
     },
     gridContainer: { paddingHorizontal: gutter },
+    coinImage: {
+  width: 30,
+  height: 30,
+  marginRight: 6,
+},
+
 
     // UPDATED FLOATING BUTTON STYLES
     floatingContainer: {

@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "../../Utils/supabase";
 import {
+  Alert,
   Dimensions,
   Image,
   Keyboard,
@@ -113,7 +114,30 @@ const Login = () => {
     setTimeout(() => otpRefs.current[0].current?.focus(), 300);
   };
 
-  const verifyOtp = async () => {
+//   const verifyOtp = async () => {
+//   const phoneWithCountryCode = `+91${mobile}`;
+//   const otpCode = otp.join("");
+
+//   const { data, error } = await supabase.auth.verifyOtp({
+//     phone: phoneWithCountryCode,
+//     token: otpCode,
+//     type: "sms",
+//   });
+
+//   if (error) {
+//     alert(error.message);
+//     return;
+//   }
+
+//   // ✅ USER IS LOGGED IN
+//   console.log("User:", data.user);
+
+//   router.replace("/(screen)/CredencialForm");
+// };
+
+
+
+const verifyOtp = async () => {
   const phoneWithCountryCode = `+91${mobile}`;
   const otpCode = otp.join("");
 
@@ -124,13 +148,36 @@ const Login = () => {
   });
 
   if (error) {
-    alert(error.message);
+    Alert.alert("OTP Error", error.message);
     return;
   }
 
-  // ✅ USER IS LOGGED IN
-  console.log("User:", data.user);
+  const user = data.user;
 
+  if (!user) {
+    Alert.alert("Error", "Authentication failed");
+    return;
+  }
+
+  // 🔍 Check if profile exists
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    Alert.alert("Error", profileError.message);
+    return;
+  }
+
+  // ✅ Profile exists → Dashboard
+  if (profile) {
+    router.replace("/(screen)/Dashboard");
+    return;
+  }
+
+  // 🆕 New user → Credential screen
   router.replace("/(screen)/CredencialForm");
 };
 

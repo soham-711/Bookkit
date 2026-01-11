@@ -158,43 +158,35 @@ const OrderDetailsScreen2 = () => {
     }, 2000);
   };
 
-  const handleViewLocation = async () => {
-    const { seller_lat, seller_lng, seller_address } = parsedOrder;
+const handleViewLocation = async () => {
+  const { seller_lat, seller_lng, seller_address } = parsedOrder;
 
-    if (!seller_lat || !seller_lng) {
-      Alert.alert("Location unavailable", "Seller location not found");
+  if (!seller_lat || !seller_lng) {
+    Alert.alert("Location unavailable", "Seller location not found");
+    return;
+  }
+
+  const latLng = `${seller_lat},${seller_lng}`;
+  const label = encodeURIComponent("Seller Location");
+
+  const appleMapsUrl = `http://maps.apple.com/?q=${label}&ll=${latLng}`;
+  const googleMapsAppUrl = `geo:${latLng}?q=${latLng}(${label})`;
+  const googleMapsWebUrl = `https://www.google.com/maps/search/?api=1&query=${latLng}`;
+
+  try {
+    if (Platform.OS === "ios") {
+      await Linking.openURL(appleMapsUrl);
       return;
     }
 
-    const label = encodeURIComponent("Seller Location");
-    const address = encodeURIComponent(seller_address ?? "");
+    // Android → directly try geo: (don't rely on canOpenURL)
+    await Linking.openURL(googleMapsAppUrl);
+  } catch (err) {
+    // 🌍 Final fallback → browser
+    await Linking.openURL(googleMapsWebUrl);
+  }
+};
 
-    const iosUrl = `maps://?q=${label}&ll=${seller_lat},${seller_lng}`;
-    const androidUrl = `geo:${seller_lat},${seller_lng}?q=${seller_lat},${seller_lng}(${label})`;
-    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${seller_lat},${seller_lng}`;
-
-    try {
-      if (Platform.OS === "ios") {
-        const canOpenAppleMaps = await Linking.canOpenURL(iosUrl);
-        if (canOpenAppleMaps) {
-          await Linking.openURL(iosUrl);
-          return;
-        }
-      }
-
-      const canOpenNative = await Linking.canOpenURL(androidUrl);
-      if (canOpenNative) {
-        await Linking.openURL(androidUrl);
-        return;
-      }
-
-      // 🌍 Fallback → Google Maps web
-      await Linking.openURL(googleMapsUrl);
-    } catch (error) {
-      console.error("Failed to open maps:", error);
-      Alert.alert("Error", "Unable to open map location");
-    }
-  };
 
 const handleCall = () => {
   if (!sellerProfile?.phone) {

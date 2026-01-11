@@ -70,15 +70,23 @@ const DeliverablesScreen = () => {
     cancelOrder,
     completeOrder,
   } = useOrders();
+  console.log(sellerDeliverables);
 
   const deliveries = sellerDeliverables.map((order) => ({
     id: order.id,
     title: order.book_title,
     orderId: order.id.slice(0, 8).toUpperCase(),
-    customerName: "Buyer", // optional (join later)
-    customerPhone: "", // optional
+    customerName: "Buyer",
+    customerPhone: order.buyer_phone,
+
     pickupLocation: order.seller_address,
     dropLocation: order.buyer_address,
+
+    pickupLat: order.seller_lat,
+    pickupLng: order.seller_lng,
+    dropLat: order.buyer_lat,
+    dropLng: order.buyer_lng,
+
     status:
       order.status === "pending"
         ? "pending"
@@ -87,6 +95,7 @@ const DeliverablesScreen = () => {
         : order.status === "cancelled"
         ? "cancelled"
         : "delivered",
+
     price: `₹${order.book_price}`,
     distance: `${order.distance_km.toFixed(1)} km`,
     image: order.book_image ?? "https://via.placeholder.com/150",
@@ -141,23 +150,66 @@ const DeliverablesScreen = () => {
     ]);
   };
 
-  const handleCallCustomer = (phone: string) => {
-    Linking.openURL(`tel:${phone}`);
-  };
+const handleCallCustomer = async (phone?: string | null) => {
+  if (!phone) {
+    Alert.alert("Phone unavailable", "Customer phone number not found");
+    return;
+  }
 
-  const handleOpenMap = (location: string) => {
-    const scheme = Platform.select({
-      ios: "maps:0,0?q=",
-      android: "geo:0,0?q=",
-    });
-    const latLng = `${0},${0}`;
-    const label = location;
-    const url = Platform.select({
-      ios: `${scheme}${label}@${latLng}`,
-      android: `${scheme}${latLng}(${label})`,
-    });
+  // Remove spaces, dashes, etc.
+  const sanitizedPhone = phone.replace(/[^\d+]/g, "");
 
-    if (url) Linking.openURL(url);
+  if (sanitizedPhone.length < 8) {
+    Alert.alert("Invalid phone number", "Unable to call this number");
+    return;
+  }
+
+  const phoneUrl = `tel:+${sanitizedPhone}`;
+
+  try {
+    const canCall = await Linking.canOpenURL(phoneUrl);
+    if (!canCall) {
+      Alert.alert("Error", "Calling is not supported on this device");
+      return;
+    }
+
+    await Linking.openURL(phoneUrl);
+  } catch (error) {
+    console.error("Call failed:", error);
+    Alert.alert("Error", "Unable to place the call");
+  }
+};
+
+
+  const handleOpenMap = async (
+    lat?: number,
+    lng?: number,
+    labelText = "Location"
+  ) => {
+    if (!lat || !lng) {
+      Alert.alert("Location unavailable", "Coordinates not found");
+      return;
+    }
+
+    const latLng = `${lat},${lng}`;
+    const label = encodeURIComponent(labelText);
+
+    const appleMapsUrl = `http://maps.apple.com/?q=${label}&ll=${latLng}`;
+    const googleMapsAppUrl = `geo:${latLng}?q=${latLng}(${label})`;
+    const googleMapsWebUrl = `https://www.google.com/maps/search/?api=1&query=${latLng}`;
+
+    try {
+      if (Platform.OS === "ios") {
+        await Linking.openURL(appleMapsUrl);
+        return;
+      }
+
+      // Android → directly try Google Maps app
+      await Linking.openURL(googleMapsAppUrl);
+    } catch (error) {
+      // 🌍 Fallback → browser
+      await Linking.openURL(googleMapsWebUrl);
+    }
   };
 
   const isSmallPhone = width < 375;
@@ -234,36 +286,35 @@ const DeliverablesScreen = () => {
                   <View style={styles.statusRow}>
                     <Text style={styles.orderId}>{item.orderId}</Text>
 
-                   <View
-  style={[
-    styles.statusBadge,
+                    <View
+                      style={[
+                        styles.statusBadge,
 
-    item.status === "pending" && styles.badgeNew,
-    item.status === "accepted" && styles.badgeInProgress,
-    item.status === "delivered" && styles.badgeDelivered,
-    item.status === "cancelled" && styles.badgeCancelled,
-  ]}
->
-  <Text
-    style={[
-      styles.statusText,
+                        item.status === "pending" && styles.badgeNew,
+                        item.status === "accepted" && styles.badgeInProgress,
+                        item.status === "delivered" && styles.badgeDelivered,
+                        item.status === "cancelled" && styles.badgeCancelled,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusText,
 
-      item.status === "pending" && styles.textNew,
-      item.status === "accepted" && styles.textInProgress,
-      item.status === "delivered" && styles.textDelivered,
-      item.status === "cancelled" && styles.textCancelled,
-    ]}
-  >
-    {item.status === "pending"
-      ? "NEW ORDER"
-      : item.status === "accepted"
-      ? "IN PROGRESS"
-      : item.status === "delivered"
-      ? "DELIVERED"
-      : "CANCELLED"}
-  </Text>
-</View>
-
+                          item.status === "pending" && styles.textNew,
+                          item.status === "accepted" && styles.textInProgress,
+                          item.status === "delivered" && styles.textDelivered,
+                          item.status === "cancelled" && styles.textCancelled,
+                        ]}
+                      >
+                        {item.status === "pending"
+                          ? "NEW ORDER"
+                          : item.status === "accepted"
+                          ? "IN PROGRESS"
+                          : item.status === "delivered"
+                          ? "DELIVERED"
+                          : "CANCELLED"}
+                      </Text>
+                    </View>
                   </View>
 
                   <Text style={styles.itemTitle} numberOfLines={1}>
@@ -357,7 +408,13 @@ const DeliverablesScreen = () => {
 
                       <TouchableOpacity
                         style={styles.navigateButton}
-                        onPress={() => handleOpenMap(item.dropLocation)}
+                        onPress={() =>
+                          handleOpenMap(
+                            item.dropLat,
+                            item.dropLng,
+                            "Drop Location"
+                          )
+                        }
                       >
                         <LinearGradient
                           colors={["#0e7490", "#0891b2"]}
@@ -584,59 +641,57 @@ function createStyles({
     statusTextPending: { color: "#c2410c" },
     statusTextActive: { color: "#0e7490" },
     badgeNew: {
-  backgroundColor: "#fff7ed",
-  borderWidth: 1,
-  borderColor: "#fed7aa",
-  paddingHorizontal: s(10),
-  paddingVertical: vs(4),
-},
+      backgroundColor: "#fff7ed",
+      borderWidth: 1,
+      borderColor: "#fed7aa",
+      paddingHorizontal: s(10),
+      paddingVertical: vs(4),
+    },
 
-textNew: {
-  color: "#c2410c",
-  fontWeight: "700",
-  letterSpacing: 0.5,
-},
-badgeInProgress: {
-  backgroundColor: "#ecfeff",
-  borderWidth: 1,
-  borderColor: "#67e8f9",
-  paddingHorizontal: s(10),
-  paddingVertical: vs(4),
-},
+    textNew: {
+      color: "#c2410c",
+      fontWeight: "700",
+      letterSpacing: 0.5,
+    },
+    badgeInProgress: {
+      backgroundColor: "#ecfeff",
+      borderWidth: 1,
+      borderColor: "#67e8f9",
+      paddingHorizontal: s(10),
+      paddingVertical: vs(4),
+    },
 
-textInProgress: {
-  color: "#0e7490",
-  fontWeight: "700",
-  letterSpacing: 0.5,
-},
-badgeDelivered: {
-  backgroundColor: "#ecfdf5",
-  borderWidth: 1,
-  borderColor: "#86efac",
-  paddingHorizontal: s(10),
-  paddingVertical: vs(4),
-  
-},
+    textInProgress: {
+      color: "#0e7490",
+      fontWeight: "700",
+      letterSpacing: 0.5,
+    },
+    badgeDelivered: {
+      backgroundColor: "#ecfdf5",
+      borderWidth: 1,
+      borderColor: "#86efac",
+      paddingHorizontal: s(10),
+      paddingVertical: vs(4),
+    },
 
-textDelivered: {
-  color: "#059669",
-  fontWeight: "800",
-  letterSpacing: 0.8,
-},
-badgeCancelled: {
-  backgroundColor: "#fef2f2",
-  borderWidth: 1,
-  borderColor: "#fecaca",
-  paddingHorizontal: s(10),
-  paddingVertical: vs(4),
-},
+    textDelivered: {
+      color: "#059669",
+      fontWeight: "800",
+      letterSpacing: 0.8,
+    },
+    badgeCancelled: {
+      backgroundColor: "#fef2f2",
+      borderWidth: 1,
+      borderColor: "#fecaca",
+      paddingHorizontal: s(10),
+      paddingVertical: vs(4),
+    },
 
-textCancelled: {
-  color: "#b91c1c",
-  fontWeight: "700",
-  letterSpacing: 0.5,
-},
-
+    textCancelled: {
+      color: "#b91c1c",
+      fontWeight: "700",
+      letterSpacing: 0.5,
+    },
 
     itemTitle: {
       fontSize: fontSize(isTablet ? 17 : 15),
