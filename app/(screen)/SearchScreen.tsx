@@ -1,25 +1,26 @@
-import React, { useState, useRef, useEffect } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Keyboard,
+  KeyboardEvent,
   Platform,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   useWindowDimensions,
   View,
-  FlatList,
-  StatusBar,
-  Alert,
-  ActivityIndicator,
-  Keyboard,
-  TouchableWithoutFeedback,
-  KeyboardEvent,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useDashboardStore } from "../../Context/DashboardContext";
 
 // Responsive scaling utilities
 const scale = (size: number, width: number) => (width / 375) * size;
@@ -27,34 +28,70 @@ const verticalScale = (size: number, height: number) => (height / 812) * size;
 const moderateScale = (size: number, factor: number = 0.5, width: number) =>
   size + (scale(size, width) - size) * factor;
 
-// Mock search results - Replace with your actual API call
-const mockSearchResults = [
-  { id: "1", title: "Navigation for Beginners", author: "John Doe", type: "Book" },
-  { id: "2", title: "Web Development Basics", author: "Jane Smith", type: "Book" },
-  { id: "3", title: "Story Writing Guide", author: "Bob Wilson", type: "Book" },
-  { id: "4", title: "Stoicism Philosophy", author: "Marcus Aurelius", type: "Book" },
-  { id: "5", title: "Advanced Navigation", author: "Sarah Connor", type: "Book" },
-  { id: "6", title: "The Navigator's Handbook", author: "Tom Hardy", type: "Book" },
-];
-
 const SearchScreen = () => {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const styles = createStyles(width, height, insets);
   const inputRef = useRef<TextInput>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
+
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [history, setHistory] = useState<string[]>(["nav", "w", "st", "sto"]);
+  const [history, setHistory] = useState<string[]>([]);
   const [isRecording, setIsRecording] = useState(false);
 
   // New states for search functionality
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+
   const [showResults, setShowResults] = useState(false);
+
+  const SEARCH_HISTORY_KEY = "@search_history";
+  const { allBooks, loading } = useDashboardStore();
+
+  const uniqueBooks = useMemo(() => {
+    const map = new Map<string, any>();
+
+    allBooks.forEach((item) => {
+      const book = item.book;
+      if (book?.id) {
+        map.set(book.id, item); // keep distance info too
+      }
+    });
+
+    return Array.from(map.values());
+  }, [allBooks]);
+
+  console.log(allBooks);
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+
+    const q = searchQuery.toLowerCase();
+
+    return uniqueBooks.filter(
+      ({ book }) =>
+        book.title?.toLowerCase().includes(q) ||
+        book.authorname?.toLowerCase().includes(q) ||
+        book.subject?.toLowerCase().includes(q) ||
+        book.category?.toLowerCase().includes(q)
+    );
+  }, [searchQuery, uniqueBooks]);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(SEARCH_HISTORY_KEY);
+        if (stored) {
+          setHistory(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.log("Failed to load search history");
+      }
+    };
+
+    loadHistory();
+  }, []);
 
   // Auto-focus input on mount to open keyboard
   useEffect(() => {
@@ -67,15 +104,15 @@ const SearchScreen = () => {
   // Keyboard listeners
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+      Platform.OS === "android" ? "keyboardDidShow" : "keyboardWillShow",
       (e: KeyboardEvent) => {
         setKeyboardHeight(e.endCoordinates.height);
         setIsKeyboardVisible(true);
       }
     );
-    
+
     const keyboardDidHideListener = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      Platform.OS === "android" ? "keyboardDidHide" : "keyboardWillHide",
       () => {
         setKeyboardHeight(0);
         setIsKeyboardVisible(false);
@@ -88,58 +125,36 @@ const SearchScreen = () => {
     };
   }, []);
 
-  // Debounced search function
+  // Simulated search function - Replace with your actual API call
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    if (searchQuery.trim().length > 0) {
-      setIsSearching(true);
-      setShowResults(true);
-      
-      // Debounce search by 300ms
-      searchTimeoutRef.current = setTimeout(() => {
-        performSearch(searchQuery.trim());
-      }, 300);
-    } else {
-      setShowResults(false);
-      setSearchResults([]);
-      setIsSearching(false);
-    }
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
+    setShowResults(searchQuery.trim().length > 0);
   }, [searchQuery]);
 
-  // Simulated search function - Replace with your actual API call
-  const performSearch = (query: string) => {
-    // Simulate API delay
-    setTimeout(() => {
-      const filtered = mockSearchResults.filter((item) =>
-        item.title.toLowerCase().includes(query.toLowerCase()) ||
-        item.author.toLowerCase().includes(query.toLowerCase())
-      );
-      setSearchResults(filtered);
-      setIsSearching(false);
-    }, 200);
-  };
-
-  const addHistory = () => {
+  const addHistory = async () => {
     const trimmed = searchQuery.trim();
     if (!trimmed) return;
-    setHistory((prev) => {
-      const updated = [trimmed, ...prev.filter((i) => i !== trimmed)];
-      return updated.slice(0, 10);
-    });
-    setSearchQuery("");
+
+    const updated = [trimmed, ...history.filter((i) => i !== trimmed)].slice(
+      0,
+      10
+    );
+
+    setHistory(updated);
+
+    try {
+      await AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.log("Failed to save search history");
+    }
+
+    Keyboard.dismiss();
   };
 
-  const removeHistoryItem = (item: string) => {
-    setHistory((prev) => prev.filter((i) => i !== item));
+  const removeHistoryItem = async (item: string) => {
+    const updated = history.filter((i) => i !== item);
+    setHistory(updated);
+
+    await AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
   };
 
   const clearAll = () => {
@@ -147,14 +162,14 @@ const SearchScreen = () => {
       "Clear All",
       "Clear all recent searches?",
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Cancel", style: "cancel" },
         {
           text: "Clear",
           style: "destructive",
-          onPress: () => setHistory([]),
+          onPress: async () => {
+            setHistory([]);
+            await AsyncStorage.removeItem(SEARCH_HISTORY_KEY);
+          },
         },
       ],
       { cancelable: true }
@@ -162,16 +177,15 @@ const SearchScreen = () => {
   };
 
   const handleResultPress = (item: any) => {
-    // Add to history
-    const trimmed = item.title.trim();
-    setHistory((prev) => {
-      const updated = [trimmed, ...prev.filter((i) => i !== trimmed)];
-      return updated.slice(0, 10);
+    Keyboard.dismiss();
+
+    router.push({
+      pathname: "/(screen)/DiscloseScreen",
+      params: {
+        bookId: item.book.id,
+        distance: item.distance_km,
+      },
     });
-    
-    // Navigate to book details or perform action
-    console.log("Selected:", item);
-    // router.push(`/book/${item.id}`);
   };
 
   // Dismiss keyboard when tapping outside
@@ -190,18 +204,15 @@ const SearchScreen = () => {
       activeOpacity={0.6}
     >
       <View style={styles.resultIconContainer}>
-        <Ionicons
-          name="book-outline"
-          size={scale(24, width)}
-          color="#003EF9"
-        />
+        <Ionicons name="book-outline" size={scale(24, width)} color="#003EF9" />
       </View>
       <View style={styles.resultContent}>
         <Text style={styles.resultTitle} numberOfLines={1}>
-          {item.title}
+          {item.book.title}
         </Text>
+
         <Text style={styles.resultAuthor} numberOfLines={1}>
-          {item.author} • {item.type}
+          {item.book.authorname} • {item.book.subject}
         </Text>
       </View>
       <Ionicons
@@ -213,11 +224,12 @@ const SearchScreen = () => {
   );
 
   // Calculate bottom padding based on keyboard height
-  const bottomPadding = Platform.OS === 'ios' 
-    ? Math.max(insets.bottom, verticalScale(20, height))
-    : isKeyboardVisible 
-      ? keyboardHeight + verticalScale(50,height)
-      : Math.max(insets.bottom, verticalScale(20,height));
+  const bottomPadding =
+    Platform.OS === "ios"
+      ? Math.max(insets.bottom, verticalScale(20, height))
+      : isKeyboardVisible
+      ? keyboardHeight + verticalScale(50, height)
+      : Math.max(insets.bottom, verticalScale(20, height));
 
   return (
     <>
@@ -258,7 +270,7 @@ const SearchScreen = () => {
             <View style={styles.card}>
               {/* SEARCH RESULTS */}
               {showResults ? (
-                isSearching ? (
+                loading ? (
                   <View style={styles.loadingState}>
                     <ActivityIndicator size="large" color="#003EF9" />
                     <Text style={styles.loadingText}>Searching...</Text>
@@ -278,76 +290,80 @@ const SearchScreen = () => {
                 ) : (
                   <FlatList
                     data={searchResults}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item.book.id}
                     renderItem={renderSearchResult}
-                    ItemSeparatorComponent={() => <View style={styles.separator} />}
-                    bounces={true}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={styles.listContent}
-                  />
-                )
-              ) : (
-                /* HISTORY LIST */
-                history.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <Ionicons
-                      name="search-outline"
-                      size={scale(64, width)}
-                      color="#003EF940"
-                    />
-                    <Text style={styles.emptyText}>No recent searches yet</Text>
-                    <Text style={styles.emptySubtext}>
-                      Start typing to find books
-                    </Text>
-                  </View>
-                ) : (
-                  <FlatList
-                    data={history}
-                    keyExtractor={(item, index) => item + index}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.row}
-                        onPress={() => {
-                          setSearchQuery(item);
-                          inputRef.current?.focus();
-                        }}
-                        activeOpacity={0.6}
-                      >
-                        <View style={styles.rowLeft}>
-                          <Ionicons
-                            name="time-outline"
-                            size={scale(20, width)}
-                            color="#003EF9"
-                            style={styles.historyIcon}
-                          />
-                          <Text style={styles.rowText}>{item}</Text>
-                        </View>
-                        <TouchableOpacity
-                          onPress={() => removeHistoryItem(item)}
-                          style={styles.deleteBtn}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons
-                            name="close"
-                            size={scale(20, width)}
-                            color="#00000060"
-                          />
-                        </TouchableOpacity>
-                      </TouchableOpacity>
+                    ItemSeparatorComponent={() => (
+                      <View style={styles.separator} />
                     )}
-                    ItemSeparatorComponent={() => <View style={styles.separator} />}
                     bounces={true}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     contentContainerStyle={styles.listContent}
                   />
                 )
+              ) : /* HISTORY LIST */
+              history.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons
+                    name="search-outline"
+                    size={scale(64, width)}
+                    color="#003EF940"
+                  />
+                  <Text style={styles.emptyText}>No recent searches yet</Text>
+                  <Text style={styles.emptySubtext}>
+                    Start typing to find books
+                  </Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={history}
+                  keyExtractor={(item, index) => item + index}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.row}
+                      onPress={() => {
+                        setSearchQuery(item);
+                        inputRef.current?.focus();
+                      }}
+                      activeOpacity={0.6}
+                    >
+                      <View style={styles.rowLeft}>
+                        <Ionicons
+                          name="time-outline"
+                          size={scale(20, width)}
+                          color="#003EF9"
+                          style={styles.historyIcon}
+                        />
+                        <Text style={styles.rowText}>{item}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => removeHistoryItem(item)}
+                        style={styles.deleteBtn}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name="close"
+                          size={scale(20, width)}
+                          color="#00000060"
+                        />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  )}
+                  ItemSeparatorComponent={() => (
+                    <View style={styles.separator} />
+                  )}
+                  bounces={true}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.listContent}
+                />
               )}
             </View>
 
             {/* BOTTOM SEARCH BAR - Using manual keyboard handling for Android */}
-            <View style={[styles.bottomWrapper, { paddingBottom: bottomPadding }]}>
+            <View
+              style={[styles.bottomWrapper, { paddingBottom: bottomPadding }]}
+            >
               <View style={styles.searchBar}>
                 <Ionicons
                   name="search-outline"
@@ -382,10 +398,7 @@ const SearchScreen = () => {
                 )}
                 <View style={styles.divider} />
                 <TouchableOpacity
-                  style={[
-                    styles.micBtn,
-                    isRecording && styles.micBtnRecording,
-                  ]}
+                  style={[styles.micBtn, isRecording && styles.micBtnRecording]}
                   activeOpacity={0.7}
                   onPress={() => setIsRecording(!isRecording)}
                 >
@@ -418,7 +431,7 @@ const createStyles = (width: number, height: number, insets: any) => {
     gradientContainer: {
       flex: 1,
     },
-    
+
     topBar: {
       flexDirection: "row",
       alignItems: "center",

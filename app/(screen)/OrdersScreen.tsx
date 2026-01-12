@@ -1,36 +1,37 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import {
-  View,
+  ArrowLeft,
+  Calendar,
+  CheckCircle2,
+  ChevronRight,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Dimensions,
+  Image,
+  Modal,
+  PixelRatio,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  StyleSheet,
-  StatusBar,
-  Modal,
-  Pressable,
   useWindowDimensions,
-  PixelRatio,
-  Platform,
-  Dimensions,
-  ActivityIndicator,
-  RefreshControl,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+  View,
+} from "react-native";
 import {
-  Search,
-  SlidersHorizontal,
-  ChevronRight,
-  ArrowLeft,
-  X,
-  Calendar,
-  CheckCircle2,
-} from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useOrders } from "../../Context/OrdersContext";
-
 
 type OrderStatus = "pending" | "confirmed" | "cancelled" | "completed";
 
@@ -68,7 +69,6 @@ export interface Order {
   created_at: string;
 }
 
-
 type UIOrder = {
   id: string;
 
@@ -86,20 +86,17 @@ type UIOrder = {
   date: Date;
 };
 
-
-
-
 // Get actual device dimensions for better scaling
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // Responsive scaling based on screen size and orientation
 const scale = (size: number) => {
   const baseWidth = 375; // iPhone 12/13/14 standard
   const scaleFactor = SCREEN_WIDTH / baseWidth;
   const scaledSize = size * scaleFactor;
-  
+
   // Ensure minimum sizes for readability
-  if (Platform.OS === 'ios') {
+  if (Platform.OS === "ios") {
     return Math.round(PixelRatio.roundToNearestPixel(scaledSize));
   }
   return Math.round(scaledSize);
@@ -109,7 +106,7 @@ const verticalScale = (size: number) => {
   const baseHeight = 812; // iPhone 12/13/14 height
   const scaleFactor = SCREEN_HEIGHT / baseHeight;
   const scaledSize = size * scaleFactor;
-  
+
   // Cap scaling for tablets
   if (SCREEN_HEIGHT > 1000) {
     return Math.min(scaledSize, size * 1.3);
@@ -122,7 +119,6 @@ const moderateScale = (size: number, factor = 0.5) => {
 };
 
 const OrdersScreen = () => {
-  
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -131,18 +127,18 @@ const OrdersScreen = () => {
   const s = (size: number) => scale(size);
   const vs = (size: number) => verticalScale(size);
   const ms = (size: number, factor = 0.5) => moderateScale(size, factor);
-  
+
   // Responsive font size with accessibility consideration
   const rf = (size: number) => {
     const scaledSize = scale(size);
-    
+
     // Minimum font sizes for readability
-    const minSize = Platform.OS === 'ios' ? 12 : 14;
-    const maxSize = Platform.OS === 'ios' ? 24 : 26;
-    
+    const minSize = Platform.OS === "ios" ? 12 : 14;
+    const maxSize = Platform.OS === "ios" ? 24 : 26;
+
     // Ensure font stays within readable bounds
     let finalSize = Math.max(minSize, Math.min(scaledSize, maxSize));
-    
+
     // Adjust for different screen sizes
     if (width < 375) {
       // Small phones
@@ -151,141 +147,139 @@ const OrdersScreen = () => {
       // Tablets
       finalSize *= 1.1;
     }
-    
+
     return Math.round(PixelRatio.roundToNearestPixel(finalSize));
   };
 
+  const { buyerOrders, sellerDeliverables, loading, refreshOrders } =
+    useOrders();
 
-const { buyerOrders, sellerDeliverables, loading, refreshOrders } = useOrders();
-
-// Status mapping for UI display
-const statusMap: Record<
-  OrderStatus,
-  { text: string; color: string }
-> = {
-  pending: {
-    text: "Pending",
-    color: "#f59e0b",
-  },
-  confirmed: {
-    text: "Confirmed",
-    color: "#059669",
-  },
-  cancelled: {
-    text: "Cancelled",
-    color: "#ef4444",
-  },
-  completed: {
-    text: "Delivered",
-    color: "#059669",
-  },
-};
-
-// Map order to UI format with full order data
-const mapOrderToUI = (order: any): UIOrder => {
-   // Safely cast status to OrderStatus
-  const status = order.status as OrderStatus;
-  const meta = statusMap[status];
-
-  return {
-    id: order.id,
-    order: order, // Store the full order object
-    title: order.book_title,
-    orderNumber: order.id,
-    rawStatus: order.status,
-    statusText: meta.text,
-    statusColor: meta.color,
-    image: order.book_image ?? "https://via.placeholder.com/150",
-    date: new Date(order.created_at),
+  // Status mapping for UI display
+  const statusMap: Record<OrderStatus, { text: string; color: string }> = {
+    pending: {
+      text: "Pending",
+      color: "#f59e0b",
+    },
+    confirmed: {
+      text: "Confirmed",
+      color: "#059669",
+    },
+    cancelled: {
+      text: "Cancelled",
+      color: "#ef4444",
+    },
+    completed: {
+      text: "Delivered",
+      color: "#059669",
+    },
   };
-};
 
-// Get all orders (both buyer and seller) combined
-const allOrders: UIOrder[] = useMemo(() => {
-  // Combine buyer and seller orders
-  const combined = [...buyerOrders as any[], ...sellerDeliverables as any[]];
-  
-  // Remove duplicates by id
-  const uniqueOrders = combined.reduce((acc: any[], current) => {
-    const exists = acc.find(item => item.id === current.id);
-    if (!exists) {
-      acc.push(current);
-    }
-    return acc;
-  }, []);
-  
-  return uniqueOrders.map(mapOrderToUI);
-}, [buyerOrders, sellerDeliverables]);
+  // Map order to UI format with full order data
+  const mapOrderToUI = (order: any): UIOrder => {
+    // Safely cast status to OrderStatus
+    const status = order.status as OrderStatus;
+    const meta = statusMap[status];
 
-const [orders, setOrders] = useState<UIOrder[]>([]);
-const [refreshing, setRefreshing] = useState(false);
+    return {
+      id: order.id,
+      order: order, // Store the full order object
+      title: order.book_title,
+      orderNumber: order.id,
+      rawStatus: order.status,
+      statusText: meta.text,
+      statusColor: meta.color,
+      image: order.book_image ?? "https://via.placeholder.com/150",
+      date: new Date(order.created_at),
+    };
+  };
 
+  // Get all orders (both buyer and seller) combined
+  const allOrders: UIOrder[] = useMemo(() => {
+    // Combine buyer and seller orders
+    const combined = [
+      ...(buyerOrders as any[]),
+      ...(sellerDeliverables as any[]),
+    ];
 
-  const [searchQuery, setSearchQuery] = useState('');
+    // Remove duplicates by id
+    const uniqueOrders = combined.reduce((acc: any[], current) => {
+      const exists = acc.find((item) => item.id === current.id);
+      if (!exists) {
+        acc.push(current);
+      }
+      return acc;
+    }, []);
+
+    return uniqueOrders.map(mapOrderToUI);
+  }, [buyerOrders, sellerDeliverables]);
+
+  const [orders, setOrders] = useState<UIOrder[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
 
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [isFeedbackModalVisible, setFeedbackModalVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<UIOrder | null>(null);
-  const [reviewText, setReviewText] = useState('');
+  const [reviewText, setReviewText] = useState("");
 
-  const [selectedStatus, setSelectedStatus] = useState('All');
-  const [selectedDateRange, setSelectedDateRange] = useState('All Time');
+  const [selectedStatus, setSelectedStatus] = useState("All");
+  const [selectedDateRange, setSelectedDateRange] = useState("All Time");
 
+  useEffect(() => {
+    applyAllFilters();
+  }, [searchQuery, selectedStatus, selectedDateRange, allOrders]);
 
-useEffect(() => {
-  applyAllFilters();
-}, [searchQuery, selectedStatus, selectedDateRange, allOrders]);
-
-
-const applyAllFilters = () => {
+  const applyAllFilters = () => {
     let filteredData: UIOrder[] = [...allOrders];
 
-  // Search
-  if (searchQuery.trim()) {
-    const q = searchQuery.toLowerCase();
-    filteredData = filteredData.filter(order =>
-      order.title.toLowerCase().includes(q) ||
-      order.orderNumber.toLowerCase().includes(q) ||
-      order.statusText.toLowerCase().includes(q)
-    );
-  }
+    // Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filteredData = filteredData.filter(
+        (order) =>
+          order.title.toLowerCase().includes(q) ||
+          order.orderNumber.toLowerCase().includes(q) ||
+          order.statusText.toLowerCase().includes(q)
+      );
+    }
 
-  // Status
-  if (selectedStatus !== "All") {
-    filteredData = filteredData.filter(order => {
-      if (selectedStatus === "Conformed") {
-        return order.rawStatus === "confirmed";
-      }
-      return order.statusText.toLowerCase() === selectedStatus.toLowerCase();
-    });
-  }
+    // Status
+    if (selectedStatus !== "All") {
+      filteredData = filteredData.filter((order) => {
+        if (selectedStatus === "Conformed") {
+          return order.rawStatus === "confirmed";
+        }
+        return order.statusText.toLowerCase() === selectedStatus.toLowerCase();
+      });
+    }
 
-  // Date
-  if (selectedDateRange !== "All Time") {
-    const now = new Date();
+    // Date
+    if (selectedDateRange !== "All Time") {
+      const now = new Date();
 
-    filteredData = filteredData.filter(order => {
-      const d = order.date;
+      filteredData = filteredData.filter((order) => {
+        const d = order.date;
 
-      if (selectedDateRange === "Last 30 Days") {
-        return d >= new Date(now.setDate(now.getDate() - 30));
-      }
+        if (selectedDateRange === "Last 30 Days") {
+          return d >= new Date(now.setDate(now.getDate() - 30));
+        }
 
-      if (selectedDateRange === "Last 6 Months") {
-        return d >= new Date(now.setMonth(now.getMonth() - 6));
-      }
+        if (selectedDateRange === "Last 6 Months") {
+          return d >= new Date(now.setMonth(now.getMonth() - 6));
+        }
 
-      if (selectedDateRange === "2024") {
-        return d.getFullYear() === 2024;
-      }
+        if (selectedDateRange === "2024") {
+          return d.getFullYear() === 2024;
+        }
 
-      return true;
-    });
-  }
+        return true;
+      });
+    }
 
-  setOrders(filteredData);
-};
+    setOrders(filteredData);
+  };
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -300,71 +294,80 @@ const applyAllFilters = () => {
     setFeedbackModalVisible(true);
   };
 
-const handleFeedbackSubmit = () => {
-  if (!selectedOrder) return;
+  const handleFeedbackSubmit = () => {
+    if (!selectedOrder) return;
 
-  // Since feedbackSubmitted is not in UIOrder, we just close the modal
-  setFeedbackModalVisible(false);
-  setSelectedOrder(null);
-  setReviewText('');
-};
-
+    // Since feedbackSubmitted is not in UIOrder, we just close the modal
+    setFeedbackModalVisible(false);
+    setSelectedOrder(null);
+    setReviewText("");
+  };
 
   const applyFilters = () => setFilterModalVisible(false);
 
   const resetFilters = () => {
-    setSelectedStatus('All');
-    setSelectedDateRange('All Time');
-    setSearchQuery('');
+    setSelectedStatus("All");
+    setSelectedDateRange("All Time");
+    setSearchQuery("");
   };
 
   const handleBack = () => {
-    router.push('/(screen)/Profile');
+    router.push("/(screen)/Profile");
   };
 
-// Updated: Pass full order data as params
-const handleOrderPress = (uiOrder: UIOrder) => {
-  // Encode the full order object to pass as params
-  const orderParam = encodeURIComponent(JSON.stringify(uiOrder.order));
+  // Updated: Pass full order data as params
+  const handleOrderPress = (uiOrder: UIOrder) => {
+    // Encode the full order object to pass as params
+    const orderParam = encodeURIComponent(JSON.stringify(uiOrder.order));
 
-  // Navigate based on status with full order data
-  switch (uiOrder.rawStatus) {
-    case "pending":
-      router.push({
-        pathname: '/(screen)/OrderDetailsScreen',
-        params: { order: orderParam },
-      });
-      break;
-    case "confirmed":
-      router.push({
-        pathname: '/(screen)/OrderDetailsScreen2',
-        params: { order: orderParam },
-      });
-      break;
-    case "cancelled":
-      router.push({
-        pathname: '/(screen)/CancellScreen',
-        params: { order: orderParam },
-      });
-      break;
-    case "completed":
-      router.push({
-        pathname: '/(screen)/DeliveredScreen',
-        params: { order: orderParam },
-      });
-      break;
-    default:
-      // Default to order details screen
-      router.push({
-        pathname: '/(screen)/OrderDetailsScreen',
-        params: { order: orderParam },
-      });
-  }
-};
-
+    // Navigate based on status with full order data
+    switch (uiOrder.rawStatus) {
+      case "pending":
+        router.push({
+          pathname: "/(screen)/OrderDetailsScreen",
+          params: { order: orderParam },
+        });
+        break;
+      case "confirmed":
+        router.push({
+          pathname: "/(screen)/OrderDetailsScreen2",
+          params: { order: orderParam },
+        });
+        break;
+      case "cancelled":
+        router.push({
+          pathname: "/(screen)/CancellScreen",
+          params: { order: orderParam },
+        });
+        break;
+      case "completed":
+        router.push({
+          pathname: "/(screen)/DeliveredScreen",
+          params: { order: orderParam },
+        });
+        break;
+      default:
+        // Default to order details screen
+        router.push({
+          pathname: "/(screen)/OrderDetailsScreen",
+          params: { order: orderParam },
+        });
+    }
+  };
 
   const styles = useMemo(
-    () => createStyles({ s, vs, ms, rf, width, height, insetsTop: insets.top, insetsBottom: insets.bottom, searchFocused }),
+    () =>
+      createStyles({
+        s,
+        vs,
+        ms,
+        rf,
+        width,
+        height,
+        insetsTop: insets.top,
+        insetsBottom: insets.bottom,
+        searchFocused,
+      }),
     [width, height, insets.top, insets.bottom, searchFocused]
   );
 
@@ -372,12 +375,12 @@ const handleOrderPress = (uiOrder: UIOrder) => {
   if (loading) {
     return (
       <LinearGradient
-        colors={['#ffffffff', '#f2fbfbff']}
+        colors={["#ffffffff", "#f2fbfbff"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.container}
       >
-        <SafeAreaView style={styles.topSafeArea} edges={['top']}>
+        <SafeAreaView style={styles.topSafeArea} edges={["top"]}>
           <View style={styles.headerContainer}>
             <View style={styles.topBar}>
               <TouchableOpacity
@@ -385,7 +388,12 @@ const handleOrderPress = (uiOrder: UIOrder) => {
                 onPress={handleBack}
                 accessibilityLabel="Go back to profile"
                 accessibilityRole="button"
-                hitSlop={{ top: vs(10), bottom: vs(10), left: s(10), right: s(10) }}
+                hitSlop={{
+                  top: vs(10),
+                  bottom: vs(10),
+                  left: s(10),
+                  right: s(10),
+                }}
               >
                 <ArrowLeft color="#000" size={ms(24)} strokeWidth={2.5} />
               </TouchableOpacity>
@@ -393,8 +401,10 @@ const handleOrderPress = (uiOrder: UIOrder) => {
             </View>
           </View>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#003EF9" />
-            <Text style={styles.loadingText}>Loading your orders...</Text>
+            <Image
+              source={require("../../assets/images/loading.gif")}
+              style={{ height: 50, width: 50 }}
+            />
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -403,15 +413,19 @@ const handleOrderPress = (uiOrder: UIOrder) => {
 
   return (
     <LinearGradient
-      colors={['#ffffffff', '#f2fbfbff']}
+      colors={["#ffffffff", "#f2fbfbff"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent
+      />
 
       {/* Top Safe Area */}
-      <SafeAreaView style={styles.topSafeArea} edges={['top']}>
+      <SafeAreaView style={styles.topSafeArea} edges={["top"]}>
         <View style={styles.headerContainer}>
           <View style={styles.topBar}>
             <TouchableOpacity
@@ -419,19 +433,22 @@ const handleOrderPress = (uiOrder: UIOrder) => {
               onPress={handleBack}
               accessibilityLabel="Go back to profile"
               accessibilityRole="button"
-              hitSlop={{ top: vs(10), bottom: vs(10), left: s(10), right: s(10) }}
+              hitSlop={{
+                top: vs(10),
+                bottom: vs(10),
+                left: s(10),
+                right: s(10),
+              }}
             >
               <ArrowLeft color="#000" size={ms(24)} strokeWidth={2.5} />
             </TouchableOpacity>
 
             <Text style={styles.screenTitle}>My Orders</Text>
-            
-
           </View>
 
           <View style={styles.bannerContainer}>
             <Image
-              source={require('../../assets/images/order.png')}
+              source={require("../../assets/images/order.png")}
               style={styles.bannerImage}
               resizeMode="cover"
             />
@@ -439,8 +456,16 @@ const handleOrderPress = (uiOrder: UIOrder) => {
 
           {/* Search + Filter */}
           <View style={styles.searchContainer}>
-            <View style={[styles.searchBox, searchFocused && styles.searchBoxFocused]}>
-              <Search color={searchFocused ? '#003EF9' : '#00000060'} size={ms(20)} />
+            <View
+              style={[
+                styles.searchBox,
+                searchFocused && styles.searchBoxFocused,
+              ]}
+            >
+              <Search
+                color={searchFocused ? "#003EF9" : "#00000060"}
+                size={ms(20)}
+              />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search orders, books, status"
@@ -453,9 +478,9 @@ const handleOrderPress = (uiOrder: UIOrder) => {
                 returnKeyType="search"
               />
 
-              {searchQuery !== '' ? (
+              {searchQuery !== "" ? (
                 <TouchableOpacity
-                  onPress={() => setSearchQuery('')}
+                  onPress={() => setSearchQuery("")}
                   style={styles.clearIconButton}
                   accessibilityLabel="Clear search"
                   accessibilityRole="button"
@@ -475,13 +500,18 @@ const handleOrderPress = (uiOrder: UIOrder) => {
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={['#FFFFFF', '#F0FDFF']}
+                colors={["#FFFFFF", "#F0FDFF"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.filterButtonGradient}
               >
-                <SlidersHorizontal color="#003EF9" size={ms(22)} strokeWidth={2.5} />
-                {(selectedStatus !== 'All' || selectedDateRange !== 'All Time') && (
+                <SlidersHorizontal
+                  color="#003EF9"
+                  size={ms(22)}
+                  strokeWidth={2.5}
+                />
+                {(selectedStatus !== "All" ||
+                  selectedDateRange !== "All Time") && (
                   <View style={styles.filterBadge} />
                 )}
               </LinearGradient>
@@ -489,7 +519,7 @@ const handleOrderPress = (uiOrder: UIOrder) => {
           </View>
 
           {/* Active Filters */}
-          {(selectedStatus !== 'All' || selectedDateRange !== 'All Time') && (
+          {(selectedStatus !== "All" || selectedDateRange !== "All Time") && (
             <View style={styles.activeFiltersContainer}>
               <View style={styles.activeFiltersHeader}>
                 <Text style={styles.activeFiltersLabel}>Active Filters</Text>
@@ -499,19 +529,25 @@ const handleOrderPress = (uiOrder: UIOrder) => {
               </View>
 
               <View style={styles.activeFiltersChips}>
-                {selectedStatus !== 'All' && (
+                {selectedStatus !== "All" && (
                   <View style={styles.activeFilterChip}>
-                    <Text style={styles.activeFilterChipText}>{selectedStatus}</Text>
-                    <TouchableOpacity onPress={() => setSelectedStatus('All')}>
+                    <Text style={styles.activeFilterChipText}>
+                      {selectedStatus}
+                    </Text>
+                    <TouchableOpacity onPress={() => setSelectedStatus("All")}>
                       <X color="#0e7490" size={ms(14)} strokeWidth={2.5} />
                     </TouchableOpacity>
                   </View>
                 )}
 
-                {selectedDateRange !== 'All Time' && (
+                {selectedDateRange !== "All Time" && (
                   <View style={styles.activeFilterChip}>
-                    <Text style={styles.activeFilterChipText}>{selectedDateRange}</Text>
-                    <TouchableOpacity onPress={() => setSelectedDateRange('All Time')}>
+                    <Text style={styles.activeFilterChipText}>
+                      {selectedDateRange}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setSelectedDateRange("All Time")}
+                    >
                       <X color="#0e7490" size={ms(14)} strokeWidth={2.5} />
                     </TouchableOpacity>
                   </View>
@@ -533,7 +569,7 @@ const handleOrderPress = (uiOrder: UIOrder) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              colors={['#003EF9']}
+              colors={["#003EF9"]}
               tintColor="#003EF9"
             />
           }
@@ -542,15 +578,18 @@ const handleOrderPress = (uiOrder: UIOrder) => {
           <View style={styles.resultsHeader}>
             <View style={styles.resultsCountContainer}>
               <Text style={styles.resultsCount}>
-                {orders.length} {orders.length === 1 ? 'Order' : 'Orders'}
+                {orders.length} {orders.length === 1 ? "Order" : "Orders"}
               </Text>
-              
             </View>
 
             {!!searchQuery && (
               <View style={styles.searchingForContainer}>
                 <Text style={styles.searchingForText}>
-                  for "{searchQuery.length > 15 ? searchQuery.substring(0, 15) + '...' : searchQuery}"
+                  for "
+                  {searchQuery.length > 15
+                    ? searchQuery.substring(0, 15) + "..."
+                    : searchQuery}
+                  "
                 </Text>
               </View>
             )}
@@ -558,24 +597,13 @@ const handleOrderPress = (uiOrder: UIOrder) => {
 
           {orders.length === 0 ? (
             <View style={styles.emptyState}>
-              <View style={styles.emptyStateIconContainer}>
-                <Text style={styles.emptyStateIcon}>🔍</Text>
-              </View>
-              <Text style={styles.emptyStateText}>No orders found</Text>
-              <Text style={styles.emptyStateSubtext}>
-                {searchQuery ? `No results for "${searchQuery}"` : 'Try adjusting your filters'}
+              <Image
+                source={require("../../assets/images/OrderNodataFound.gif")}
+                style={{ height: 200, width: 200 }}
+              />
+              <Text style={{ fontWeight: 600, marginTop: 10 }}>
+                Sorry! No result found :(
               </Text>
-
-              <TouchableOpacity style={styles.resetButton} onPress={resetFilters} activeOpacity={0.85}>
-                <LinearGradient
-                  colors={['#67e8f9', '#22d3ee']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.resetButtonGradient}
-                >
-                  <Text style={styles.resetButtonText}>Reset Filters</Text>
-                </LinearGradient>
-              </TouchableOpacity>
             </View>
           ) : (
             orders.map((order) => (
@@ -588,14 +616,18 @@ const handleOrderPress = (uiOrder: UIOrder) => {
                 accessibilityRole="button"
               >
                 <LinearGradient
-                  colors={['#ffffff', '#fafafa']}
+                  colors={["#ffffff", "#fafafa"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                   style={styles.cardGradient}
                 >
                   <View style={styles.cardMain}>
                     <View style={styles.bookCoverWrapper}>
-                      <Image source={{ uri: order.image }} style={styles.bookImage} resizeMode="cover" />
+                      <Image
+                        source={{ uri: order.image }}
+                        style={styles.bookImage}
+                        resizeMode="cover"
+                      />
                     </View>
 
                     <View style={styles.cardInfo}>
@@ -605,17 +637,35 @@ const handleOrderPress = (uiOrder: UIOrder) => {
 
                       <View style={styles.orderNumberRow}>
                         <Text style={styles.orderNumberLabel}>Order ID:</Text>
-                        <Text style={styles.orderNumber}>#{order.orderNumber.substring(0, 12)}...</Text>
+                        <Text style={styles.orderNumber}>
+                          #{order.orderNumber.substring(0, 12)}...
+                        </Text>
                       </View>
 
                       <View style={styles.statusRow}>
-                        <View style={[styles.statusDot, { backgroundColor: order.statusColor }]} />
-                        <Text style={[styles.statusText, { color: order.statusColor }]}>{order.statusText}</Text>
+                        <View
+                          style={[
+                            styles.statusDot,
+                            { backgroundColor: order.statusColor },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.statusText,
+                            { color: order.statusColor },
+                          ]}
+                        >
+                          {order.statusText}
+                        </Text>
                       </View>
                     </View>
 
                     <View style={styles.detailsArrow}>
-                      <ChevronRight color="#003EF9" size={ms(22)} strokeWidth={2.5} />
+                      <ChevronRight
+                        color="#003EF9"
+                        size={ms(22)}
+                        strokeWidth={2.5}
+                      />
                     </View>
                   </View>
                 </LinearGradient>
@@ -634,8 +684,14 @@ const handleOrderPress = (uiOrder: UIOrder) => {
           visible={isFilterModalVisible}
           onRequestClose={() => setFilterModalVisible(false)}
         >
-          <Pressable style={styles.modalOverlay} onPress={() => setFilterModalVisible(false)}>
-            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setFilterModalVisible(false)}
+          >
+            <Pressable
+              style={styles.modalContent}
+              onPress={(e) => e.stopPropagation()}
+            >
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Filter Orders</Text>
                 <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
@@ -643,7 +699,7 @@ const handleOrderPress = (uiOrder: UIOrder) => {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView 
+              <ScrollView
                 showsVerticalScrollIndicator={false}
                 style={styles.modalScrollView}
                 contentContainerStyle={styles.modalScrollContent}
@@ -651,17 +707,28 @@ const handleOrderPress = (uiOrder: UIOrder) => {
                 <View style={styles.modalBody}>
                   <View style={styles.filterSection}>
                     <View style={styles.sectionHeader}>
-                      <CheckCircle2 size={ms(18)} color="#0e7490" style={styles.sectionIcon} />
+                      <CheckCircle2
+                        size={ms(18)}
+                        color="#0e7490"
+                        style={styles.sectionIcon}
+                      />
                       <Text style={styles.sectionTitle}>Order Status</Text>
                     </View>
 
                     <View style={styles.chipContainer}>
-                      {['All', 'Conformed', 'Delivered', 'Pending', 'Cancelled'].map((status) => (
+                      {[
+                        "All",
+                        "Conformed",
+                        "Delivered",
+                        "Pending",
+                        "Cancelled",
+                      ].map((status) => (
                         <TouchableOpacity
                           key={status}
                           style={[
                             styles.filterChip,
-                            selectedStatus === status && styles.filterChipSelected,
+                            selectedStatus === status &&
+                              styles.filterChipSelected,
                           ]}
                           onPress={() => setSelectedStatus(status)}
                           activeOpacity={0.85}
@@ -669,7 +736,8 @@ const handleOrderPress = (uiOrder: UIOrder) => {
                           <Text
                             style={[
                               styles.filterChipText,
-                              selectedStatus === status && styles.filterChipTextSelected,
+                              selectedStatus === status &&
+                                styles.filterChipTextSelected,
                             ]}
                           >
                             {status}
@@ -681,17 +749,27 @@ const handleOrderPress = (uiOrder: UIOrder) => {
 
                   <View style={styles.filterSection}>
                     <View style={styles.sectionHeader}>
-                      <Calendar size={ms(18)} color="#0e7490" style={styles.sectionIcon} />
+                      <Calendar
+                        size={ms(18)}
+                        color="#0e7490"
+                        style={styles.sectionIcon}
+                      />
                       <Text style={styles.sectionTitle}>Date Range</Text>
                     </View>
 
                     <View style={styles.chipContainer}>
-                      {['All Time', 'Last 30 Days', 'Last 6 Months', '2024'].map((date) => (
+                      {[
+                        "All Time",
+                        "Last 30 Days",
+                        "Last 6 Months",
+                        "2024",
+                      ].map((date) => (
                         <TouchableOpacity
                           key={date}
                           style={[
                             styles.filterChip,
-                            selectedDateRange === date && styles.filterChipSelected,
+                            selectedDateRange === date &&
+                              styles.filterChipSelected,
                           ]}
                           onPress={() => setSelectedDateRange(date)}
                           activeOpacity={0.85}
@@ -699,7 +777,8 @@ const handleOrderPress = (uiOrder: UIOrder) => {
                           <Text
                             style={[
                               styles.filterChipText,
-                              selectedDateRange === date && styles.filterChipTextSelected,
+                              selectedDateRange === date &&
+                                styles.filterChipTextSelected,
                             ]}
                           >
                             {date}
@@ -710,18 +789,30 @@ const handleOrderPress = (uiOrder: UIOrder) => {
                   </View>
 
                   <View style={styles.modalFooter}>
-                    <TouchableOpacity style={styles.resetFiltersButton} onPress={resetFilters} activeOpacity={0.85}>
-                      <Text style={styles.resetFiltersButtonText}>Reset All</Text>
+                    <TouchableOpacity
+                      style={styles.resetFiltersButton}
+                      onPress={resetFilters}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.resetFiltersButtonText}>
+                        Reset All
+                      </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.applyButton} onPress={applyFilters} activeOpacity={0.85}>
+                    <TouchableOpacity
+                      style={styles.applyButton}
+                      onPress={applyFilters}
+                      activeOpacity={0.85}
+                    >
                       <LinearGradient
-                        colors={['#feffffff', '#ffffffff']}
+                        colors={["#1cdfe6", "#1cdfe6"]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={styles.applyButtonGradient}
                       >
-                        <Text style={styles.applyButtonText}>Apply Filters</Text>
+                        <Text style={styles.applyButtonText}>
+                          Apply Filters
+                        </Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
@@ -735,7 +826,7 @@ const handleOrderPress = (uiOrder: UIOrder) => {
       </SafeAreaView>
 
       {/* Bottom Safe Area - Transparent */}
-      <SafeAreaView style={styles.bottomSafeArea} edges={['bottom']} />
+      <SafeAreaView style={styles.bottomSafeArea} edges={["bottom"]} />
     </LinearGradient>
   );
 };
@@ -766,43 +857,43 @@ function createStyles({
   const isLargePhone = width > 400 && width <= 768;
 
   return StyleSheet.create({
-    container: { 
+    container: {
       flex: 1,
-      backgroundColor: 'transparent',
+      backgroundColor: "transparent",
     },
-    topSafeArea: { 
+    topSafeArea: {
       flex: 1,
-      backgroundColor: 'transparent',
+      backgroundColor: "transparent",
     },
     bottomSafeArea: {
-      backgroundColor: 'transparent',
+      backgroundColor: "transparent",
     },
 
     // Loading styles
     loadingContainer: {
       flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
       paddingBottom: vs(100),
     },
     loadingText: {
       marginTop: vs(20),
       fontSize: rf(16),
-      color: '#003EF9',
-      fontWeight: '600',
+      color: "#003EF9",
+      fontWeight: "600",
     },
 
     headerContainer: {
       paddingHorizontal: s(isSmallPhone ? 16 : isTablet ? 32 : 20),
-      paddingTop: Platform.OS === 'android' ? vs(8) + insetsTop * 0.1 : vs(4),
+      paddingTop: Platform.OS === "android" ? vs(8) + insetsTop * 0.1 : vs(4),
       paddingBottom: 0,
     },
 
     topBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginBottom: vs(16),
-      paddingTop: Platform.OS === 'ios' ? vs(4) : 0,
+      paddingTop: Platform.OS === "ios" ? vs(4) : 0,
     },
 
     backButton: {
@@ -811,68 +902,64 @@ function createStyles({
     },
 
     refreshButton: {
-      marginLeft: 'auto',
+      marginLeft: "auto",
       padding: s(8),
-      backgroundColor: '#f0fdff',
+      backgroundColor: "#f0fdff",
       borderRadius: ms(8),
       borderWidth: 1,
-      borderColor: '#003EF920',
+      borderColor: "#003EF920",
     },
     refreshButtonText: {
       fontSize: rf(18),
-      color: '#003EF9',
-      fontWeight: 'bold',
+      color: "#003EF9",
+      fontWeight: "bold",
     },
 
     screenTitle: {
       fontSize: rf(isTablet ? 24 : 20),
-      fontWeight: '700',
-      color: '#000',
+      fontWeight: "700",
+      color: "#000",
       letterSpacing: 0.5,
       flex: 1,
     },
 
     bannerContainer: {
-      width: '100%',
+      width: "100%",
       height: vs(isSmallPhone ? 110 : isTablet ? 180 : 140),
-      borderRadius: ms(16),
-      overflow: 'hidden',
+      borderRadius: ms(10),
+      overflow: "hidden",
       marginBottom: vs(16),
-      elevation: 5,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      backgroundColor: '#fff',
+
+      backgroundColor: "#fff",
     },
 
-    bannerImage: { 
-      width: '100%', 
-      height: '100%',
-      borderRadius: ms(16),
+    bannerImage: {
+      width: "100%",
+      height: "100%",
+      borderRadius: ms(10),
     },
 
     searchContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginBottom: vs(12),
     },
 
     searchBox: {
       flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#FFFFFF',
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "#FFFFFF",
       borderRadius: ms(28),
       paddingHorizontal: s(16),
       height: vs(isTablet ? 58 : 50),
-      shadowColor: '#003EF9',
+      shadowColor: "#003EF9",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.1,
       shadowRadius: 8,
       elevation: 6,
-      borderWidth: Platform.OS === 'ios' ? 1 : 1.5,
-      borderColor: searchFocused ? '#5d85ffff' : '#003EF920',
+      borderWidth: Platform.OS === "ios" ? 1 : 1.5,
+      borderColor: searchFocused ? "#5d85ffff" : "#003EF920",
     },
 
     searchBoxFocused: {
@@ -884,11 +971,11 @@ function createStyles({
       flex: 1,
       marginLeft: s(10),
       fontSize: rf(isTablet ? 16 : 15),
-      color: '#000',
-      fontWeight: '500',
+      color: "#000",
+      fontWeight: "500",
       paddingVertical: 0,
       includeFontPadding: false,
-      textAlignVertical: 'center',
+      textAlignVertical: "center",
     },
 
     clearIconButton: {
@@ -898,8 +985,8 @@ function createStyles({
 
     micDivider: {
       width: 1,
-      height: '60%',
-      backgroundColor: '#ffffff0d',
+      height: "60%",
+      backgroundColor: "#ffffff0d",
       marginLeft: s(12),
     },
 
@@ -907,9 +994,9 @@ function createStyles({
       width: ms(isTablet ? 64 : 54),
       height: vs(isTablet ? 58 : 50),
       borderRadius: ms(16),
-      overflow: 'hidden',
+      overflow: "hidden",
       elevation: 4,
-      shadowColor: '#8daaffff',
+      shadowColor: "#8daaffff",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 4,
@@ -917,26 +1004,26 @@ function createStyles({
     },
 
     filterButtonGradient: {
-      width: '100%',
-      height: '100%',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: Platform.OS === 'ios' ? 1 : 1.5,
-      borderColor: '#003EF920',
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: Platform.OS === "ios" ? 1 : 1.5,
+      borderColor: "#003EF920",
       borderRadius: ms(16),
-      position: 'relative',
+      position: "relative",
     },
 
     filterBadge: {
-      position: 'absolute',
+      position: "absolute",
       top: ms(10),
       right: ms(10),
       width: ms(10),
       height: ms(10),
       borderRadius: ms(5),
-      backgroundColor: '#ef4444',
+      backgroundColor: "#ef4444",
       borderWidth: 2,
-      borderColor: '#FFFFFF',
+      borderColor: "#FFFFFF",
     },
 
     activeFiltersContainer: {
@@ -945,126 +1032,125 @@ function createStyles({
     },
 
     activeFiltersHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: vs(8),
     },
 
     activeFiltersLabel: {
       fontSize: rf(12),
-      fontWeight: '700',
-      color: '#374151',
-      textTransform: 'uppercase',
+      fontWeight: "700",
+      color: "#374151",
+      textTransform: "uppercase",
       letterSpacing: 0.5,
     },
 
     activeFiltersChips: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: "row",
+      flexWrap: "wrap",
     },
 
     activeFilterChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       paddingHorizontal: s(12),
       paddingVertical: vs(6),
       borderRadius: ms(20),
-      backgroundColor: '#ecfeff',
-      borderWidth: Platform.OS === 'ios' ? 1 : 1.5,
-      borderColor: '#67e8f9',
+      backgroundColor: "#ecfeff",
+      borderWidth: Platform.OS === "ios" ? 1 : 1.5,
+      borderColor: "#67e8f9",
       marginRight: s(8),
       marginBottom: vs(8),
     },
 
     activeFilterChipText: {
       fontSize: rf(12),
-      color: '#0e7490',
-      fontWeight: '600',
+      color: "#0e7490",
+      fontWeight: "600",
       marginRight: s(6),
     },
 
     clearAllText: {
       fontSize: rf(12),
-      color: '#ef4444',
-      fontWeight: '700',
-      textDecorationLine: 'underline',
+      color: "#ef4444",
+      fontWeight: "700",
+      textDecorationLine: "underline",
     },
 
     separator: {
       height: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.08)',
-      width: '100%',
+      backgroundColor: "rgba(0, 0, 0, 0.08)",
+      width: "100%",
       marginTop: vs(4),
     },
 
-    scrollView: { 
+    scrollView: {
       flex: 1,
-      backgroundColor: 'transparent',
+      backgroundColor: "transparent",
     },
-    scrollContent: { 
-      paddingHorizontal: s(isSmallPhone ? 16 : isTablet ? 32 : 20), 
+    scrollContent: {
+      paddingHorizontal: s(isSmallPhone ? 16 : isTablet ? 32 : 20),
       paddingTop: vs(16),
       paddingBottom: vs(8),
     },
 
     resultsHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: vs(16),
-      flexWrap: 'wrap',
+      flexWrap: "wrap",
     },
 
     resultsCountContainer: {
-      flexDirection: 'column',
-      alignItems: 'flex-start',
+      flexDirection: "column",
+      alignItems: "flex-start",
     },
 
     resultsCount: {
       fontSize: rf(isTablet ? 18 : 15),
-      fontWeight: '700',
-      color: '#0e7490',
+      fontWeight: "700",
+      color: "#0e7490",
     },
 
     totalOrdersText: {
       fontSize: rf(12),
-      color: '#6b7280',
+      color: "#6b7280",
       marginTop: vs(2),
-      fontStyle: 'italic',
+      fontStyle: "italic",
     },
 
     searchingForContainer: {
       paddingHorizontal: s(12),
       paddingVertical: vs(4),
-      backgroundColor: '#f0fdff',
+      backgroundColor: "#f0fdff",
       borderRadius: ms(12),
       marginTop: vs(8),
-      alignSelf: 'flex-start',
+      alignSelf: "flex-start",
     },
 
     searchingForText: {
       fontSize: rf(12),
-      color: '#0e7490',
-      fontStyle: 'italic',
+      color: "#0e7490",
+      fontStyle: "italic",
     },
 
     emptyState: {
       flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingVertical: vs(80),
+      justifyContent: "center",
+      alignItems: "center",
+
       paddingHorizontal: s(12),
-      minHeight: height * 0.5,
     },
 
     emptyStateIconContainer: {
       width: ms(isTablet ? 120 : 100),
       height: ms(isTablet ? 120 : 100),
       borderRadius: ms(isTablet ? 60 : 50),
-      backgroundColor: '#f0fdff',
-      justifyContent: 'center',
-      alignItems: 'center',
+      backgroundColor: "#f0fdff",
+      justifyContent: "center",
+      alignItems: "center",
       marginBottom: vs(20),
     },
 
@@ -1074,25 +1160,25 @@ function createStyles({
 
     emptyStateText: {
       fontSize: rf(isTablet ? 24 : 20),
-      fontWeight: '700',
-      color: '#374151',
+      fontWeight: "700",
+      color: "#374151",
       marginBottom: vs(8),
-      textAlign: 'center',
+      textAlign: "center",
     },
 
     emptyStateSubtext: {
       fontSize: rf(isTablet ? 16 : 14),
-      color: '#6b7280',
+      color: "#6b7280",
       marginBottom: vs(24),
-      textAlign: 'center',
+      textAlign: "center",
       paddingHorizontal: s(20),
     },
 
     resetButton: {
       borderRadius: ms(12),
-      overflow: 'hidden',
+      overflow: "hidden",
       elevation: 3,
-      shadowColor: '#67e8f9',
+      shadowColor: "#67e8f9",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
       shadowRadius: 6,
@@ -1105,16 +1191,16 @@ function createStyles({
 
     resetButtonText: {
       fontSize: rf(isTablet ? 16 : 15),
-      fontWeight: '700',
-      color: '#0e7490',
+      fontWeight: "700",
+      color: "#0e7490",
     },
 
     cardContainer: {
       marginBottom: vs(16),
       borderRadius: ms(16),
-      overflow: 'hidden',
+      overflow: "hidden",
       elevation: 3,
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.08,
       shadowRadius: 6,
@@ -1122,72 +1208,72 @@ function createStyles({
 
     cardGradient: {
       padding: s(isTablet ? 20 : 16),
-      borderWidth: Platform.OS === 'ios' ? 0.5 : 1,
-      borderColor: '#f3f4f6',
+      borderWidth: Platform.OS === "ios" ? 0.5 : 1,
+      borderColor: "#f3f4f6",
       borderRadius: ms(16),
     },
 
     cardMain: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
+      flexDirection: "row",
+      alignItems: "flex-start",
     },
 
     bookCoverWrapper: {
       width: s(isTablet ? 90 : 75),
       height: vs(isTablet ? 115 : 95),
       borderRadius: ms(10),
-      overflow: 'hidden',
+      overflow: "hidden",
       marginRight: s(14),
-      backgroundColor: '#f0f0f0',
+      backgroundColor: "#f0f0f0",
       elevation: 2,
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.1,
       shadowRadius: 2,
     },
 
-    bookImage: { 
-      width: '100%', 
-      height: '100%',
+    bookImage: {
+      width: "100%",
+      height: "100%",
     },
 
     cardInfo: {
       flex: 1,
-      justifyContent: 'center',
+      justifyContent: "center",
       paddingRight: s(8),
     },
 
     bookTitle: {
       fontSize: rf(isTablet ? 16 : 14),
-      fontWeight: '600',
-      color: '#1f2937',
+      fontWeight: "600",
+      color: "#1f2937",
       lineHeight: rf(isTablet ? 22 : 20),
       marginBottom: vs(6),
     },
 
     orderNumberRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginBottom: vs(6),
-      flexWrap: 'wrap',
+      flexWrap: "wrap",
     },
 
     orderNumberLabel: {
       fontSize: rf(isTablet ? 13 : 11),
-      color: '#6b7280',
-      fontWeight: '500',
+      color: "#6b7280",
+      fontWeight: "500",
       marginRight: s(4),
     },
 
     orderNumber: {
       fontSize: rf(isTablet ? 13 : 11),
-      color: '#9ca3af',
-      fontWeight: '600',
+      color: "#9ca3af",
+      fontWeight: "600",
     },
 
     statusRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginTop: vs(2),
     },
 
@@ -1200,32 +1286,32 @@ function createStyles({
 
     statusText: {
       fontSize: rf(isTablet ? 14 : 12),
-      fontWeight: '700',
+      fontWeight: "700",
     },
 
     detailsArrow: {
       padding: s(8),
-      alignSelf: 'center',
-      backgroundColor: '#f0fdff',
+      alignSelf: "center",
+      backgroundColor: "#f0fdff",
       borderRadius: ms(8),
-      marginLeft: 'auto',
+      marginLeft: "auto",
     },
 
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.6)',
-      justifyContent: 'flex-end',
+      backgroundColor: "rgba(0, 0, 0, 0.6)",
+      justifyContent: "flex-end",
     },
 
     modalContent: {
-      width: '100%',
-      backgroundColor: 'white',
+      width: "100%",
+      backgroundColor: "white",
       borderTopLeftRadius: ms(24),
       borderTopRightRadius: ms(24),
       padding: s(20),
       paddingBottom: s(20) + insetsBottom,
       elevation: 10,
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: -4 },
       shadowOpacity: 0.15,
       shadowRadius: 8,
@@ -1241,19 +1327,19 @@ function createStyles({
     },
 
     modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: vs(20),
       paddingBottom: vs(14),
       borderBottomWidth: 1,
-      borderBottomColor: '#f0f0f0',
+      borderBottomColor: "#f0f0f0",
     },
 
     modalTitle: {
       fontSize: rf(isTablet ? 22 : 20),
-      fontWeight: '700',
-      color: '#1f2937',
+      fontWeight: "700",
+      color: "#1f2937",
       flex: 1,
     },
 
@@ -1266,96 +1352,91 @@ function createStyles({
     },
 
     sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginBottom: vs(12),
     },
 
-    sectionIcon: { 
-      opacity: 0.8, 
-      marginRight: s(10) 
+    sectionIcon: {
+      opacity: 0.8,
+      marginRight: s(10),
     },
 
     sectionTitle: {
       fontSize: rf(isTablet ? 18 : 16),
-      fontWeight: '700',
-      color: '#374151',
+      fontWeight: "700",
+      color: "#374151",
     },
 
     chipContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: "row",
+      flexWrap: "wrap",
     },
 
     filterChip: {
       paddingHorizontal: s(isTablet ? 22 : 18),
       paddingVertical: vs(isTablet ? 12 : 10),
       borderRadius: ms(24),
-      backgroundColor: '#f9fafb',
-      borderWidth: Platform.OS === 'ios' ? 1 : 1.5,
-      borderColor: '#e5e7eb',
+      backgroundColor: "#f9fafb",
+      borderWidth: Platform.OS === "ios" ? 1 : 1.5,
+      borderColor: "#e5e7eb",
       marginRight: s(10),
       marginBottom: vs(10),
     },
 
     filterChipSelected: {
-      backgroundColor: '#ecfeff',
-      borderColor: '#67e8f9',
+      backgroundColor: "#ecfeff",
+      borderColor: "#67e8f9",
     },
 
     filterChipText: {
       fontSize: rf(isTablet ? 16 : 14),
-      color: '#6b7280',
-      fontWeight: '500',
+      color: "#6b7280",
+      fontWeight: "500",
     },
 
     filterChipTextSelected: {
-      color: '#0e7490',
-      fontWeight: '700',
+      color: "#0e7490",
+      fontWeight: "700",
     },
 
     modalFooter: {
-      flexDirection: 'row',
+      flexDirection: "row",
       marginTop: vs(20),
       gap: s(12),
     },
 
     resetFiltersButton: {
       flex: 1,
-      backgroundColor: '#f9fafb',
+      backgroundColor: "#f9fafb",
       padding: s(16),
       borderRadius: ms(14),
-      alignItems: 'center',
-      borderWidth: Platform.OS === 'ios' ? 1 : 1.5,
-      borderColor: '#e5e7eb',
+      alignItems: "center",
+      borderWidth: Platform.OS === "ios" ? 1 : 1.5,
+      borderColor: "#e5e7eb",
     },
 
     resetFiltersButtonText: {
       fontSize: rf(isTablet ? 18 : 16),
-      fontWeight: '700',
-      color: '#6b7280',
+      fontWeight: "700",
+      color: "#6b7280",
     },
 
     applyButton: {
       flex: 1,
       borderRadius: ms(14),
-      overflow: 'hidden',
-      elevation: 3,
-      shadowColor: '#67e8f9',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 6,
+      overflow: "hidden",
     },
 
     applyButtonGradient: {
       padding: s(16),
-      alignItems: 'center',
+      alignItems: "center",
     },
 
     applyButtonText: {
       fontSize: rf(isTablet ? 18 : 16),
-      fontWeight: '700',
-      color: '#0e7490',
+      fontWeight: "700",
+      color: "#ffffff",
     },
   });
 }

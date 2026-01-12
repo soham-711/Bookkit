@@ -6,18 +6,23 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BANNERS = [
   {
     id: "1",
-    image:
-      "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800&auto=format&fit=crop",
+    image: require("../../assets/images/Banner1.jpeg"),
   },
   {
     id: "2",
-    image:
-      "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop",
+    image: require("../../assets/images/Banner2.jpeg"),
   },
   {
     id: "3",
-    image:
-      "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&auto=format&fit=crop",
+    image: require("../../assets/images/Banner3.jpeg"),
+  },
+   {
+    id: "4",
+    image: require("../../assets/images/Banner4.jpeg"),
+  },
+   {
+    id: "5",
+    image: require("../../assets/images/Banner3.jpeg"),
   },
 ];
 
@@ -55,7 +60,7 @@ const BannerCarousel = () => {
     <View style={styles.itemContainer}>
       <View style={styles.imageContainer}>
         <Image
-          source={{ uri: item.image }}
+          source={ item.image }
           style={styles.bannerImage}
           resizeMode="cover"
         />

@@ -200,8 +200,12 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Loading books near you...</Text>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center",backgroundColor:'#ffffff00' }}>
+        <Image
+          source={require("../../assets/images/loading.gif")}
+          style={styles.loadingGif}
+          
+        />
       </View>
     );
   }
@@ -502,8 +506,8 @@ const createStyles = (width: number, height: number) => {
     coinBox: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: s(12),
-      paddingVertical: vs(6),
+      paddingHorizontal: s(5),
+      paddingVertical: vs(2),
       borderRadius: ms(20),
       borderWidth: 2,
       borderColor: "#6634c9a2",
@@ -535,16 +539,16 @@ const createStyles = (width: number, height: number) => {
       elevation: 4,
     },
     avatarBorder: {
-      width: s(48),
-      height: s(48),
+      width: s(40),
+      height: s(40),
       borderRadius: s(24),
       justifyContent: "center",
       alignItems: "center",
       padding: 2,
     },
     avatar: {
-      width: s(44),
-      height: s(44),
+      width: s(38),
+      height: s(38),
       borderRadius: s(22),
       backgroundColor: "#E0E7FF",
       overflow: "hidden",
@@ -687,11 +691,10 @@ const createStyles = (width: number, height: number) => {
     },
     gridContainer: { paddingHorizontal: gutter },
     coinImage: {
-  width: 30,
-  height: 30,
-  marginRight: 6,
-},
-
+      width: 25,
+      height: 25,
+      marginRight: 6,
+    },
 
     // UPDATED FLOATING BUTTON STYLES
     floatingContainer: {
@@ -752,6 +755,11 @@ const createStyles = (width: number, height: number) => {
       borderLeftColor: "transparent",
       borderRightColor: "transparent",
       borderTopColor: "#fff",
+    },
+        loadingGif: {
+      width: s(100),
+      height: s(100),
+      marginBottom: vs(10),
     },
   });
 };

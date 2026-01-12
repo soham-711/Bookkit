@@ -115,6 +115,7 @@ import {
 import { OrdersProvider } from "@/Context/OrdersContext";
 import { supabase } from "../Utils/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
 
 /* ---------- LOCATION BOOTSTRAPPER ---------- */
 function LocationBootstrapper() {
@@ -225,7 +226,11 @@ export default function RootLayout() {
       {/* ===== LOADING OVERLAY ===== */}
       {loading && (
         <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-          <ActivityIndicator size="large" color="#2CB4B2" />
+                <Image
+                  source={require("../assets/images/loading.gif")}
+                  style={{height:50,width:50,}}
+                 
+                />
         </Animated.View>
       )}
     </SafeAreaProvider>

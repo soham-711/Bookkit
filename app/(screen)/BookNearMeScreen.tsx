@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
@@ -20,15 +20,6 @@ import { LocationCoords } from "../../Services/locationService";
 // === TYPES ===
 type SortKey = "distanceAsc" | "priceAsc" | "priceDesc" | "titleAsc";
 
-type Params = {
-  selectedSort?: string;
-  selectedMaxDistanceKm?: string;
-  selectedMinPrice?: string;
-  selectedMaxPrice?: string;
-  selectedOnlyDiscounted?: string;
-  searchTag?: string;
-};
-
 // === DATA ==
 
 // === UTILS ===
@@ -37,12 +28,10 @@ const verticalScale = (size: number, height: number) => (height / 812) * size;
 const moderateScale = (size: number, factor: number = 0.5, width: number) =>
   size + (scale(size, width) - size) * factor;
 
-const toBool = (v?: string) => v === "true";
 
 export default function BookNearMeScreen() {
   const { width, height } = useWindowDimensions();
   const styles = useMemo(() => createStyles(width, height), [width, height]);
-  const params = useLocalSearchParams<Params>();
 
   const [sortKey, setSortKey] = useState<SortKey>("distanceAsc");
   const [searchTag, setSearchTag] = useState<string>("");
@@ -152,6 +141,11 @@ export default function BookNearMeScreen() {
     </View>
   );
 
+  const formatDistance = (distance?: number) => {
+    if (distance == null) return "";
+    return (Math.round(distance * 10) / 10).toFixed(1);
+  };
+
   // Filter & Sort Data
   // === RENDER ITEM WITH NAVIGATION TO DISCLOSURE PAGE ===
   const renderItem = ({ item }: { item: any }) => {
@@ -160,10 +154,10 @@ export default function BookNearMeScreen() {
         style={styles.bookCard}
         onPress={() =>
           router.push({
-            pathname: '/(screen)/DiscloseScreen',
+            pathname: "/(screen)/DiscloseScreen",
             params: {
               bookId: item.book.id,
-              distance: item.distance_km,
+              distance: formatDistance(item.distance_km),
             },
           })
         }
@@ -176,7 +170,9 @@ export default function BookNearMeScreen() {
               size={scale(10, width)}
               color="#f90000ff"
             />
-            <Text style={styles.distanceText}>{item.distance_km} km</Text>
+            <Text style={styles.distanceText}>
+              {formatDistance(item.distance_km)} km
+            </Text>
           </View>
 
           <View style={styles.imagePlaceholder}>

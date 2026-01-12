@@ -101,6 +101,7 @@ const DeliverablesScreen = () => {
     image: order.book_image ?? "https://via.placeholder.com/150",
     otp: order.delivery_otp?.toString(),
   }));
+  const hasNoDeliveries = !loading && deliveries.length === 0;
 
   const handleAcceptOrder = (orderId: string) => {
     Alert.alert(
@@ -150,36 +151,35 @@ const DeliverablesScreen = () => {
     ]);
   };
 
-const handleCallCustomer = async (phone?: string | null) => {
-  if (!phone) {
-    Alert.alert("Phone unavailable", "Customer phone number not found");
-    return;
-  }
-
-  // Remove spaces, dashes, etc.
-  const sanitizedPhone = phone.replace(/[^\d+]/g, "");
-
-  if (sanitizedPhone.length < 8) {
-    Alert.alert("Invalid phone number", "Unable to call this number");
-    return;
-  }
-
-  const phoneUrl = `tel:+${sanitizedPhone}`;
-
-  try {
-    const canCall = await Linking.canOpenURL(phoneUrl);
-    if (!canCall) {
-      Alert.alert("Error", "Calling is not supported on this device");
+  const handleCallCustomer = async (phone?: string | null) => {
+    if (!phone) {
+      Alert.alert("Phone unavailable", "Customer phone number not found");
       return;
     }
 
-    await Linking.openURL(phoneUrl);
-  } catch (error) {
-    console.error("Call failed:", error);
-    Alert.alert("Error", "Unable to place the call");
-  }
-};
+    // Remove spaces, dashes, etc.
+    const sanitizedPhone = phone.replace(/[^\d+]/g, "");
 
+    if (sanitizedPhone.length < 8) {
+      Alert.alert("Invalid phone number", "Unable to call this number");
+      return;
+    }
+
+    const phoneUrl = `tel:+${sanitizedPhone}`;
+
+    try {
+      const canCall = await Linking.canOpenURL(phoneUrl);
+      if (!canCall) {
+        Alert.alert("Error", "Calling is not supported on this device");
+        return;
+      }
+
+      await Linking.openURL(phoneUrl);
+    } catch (error) {
+      console.error("Call failed:", error);
+      Alert.alert("Error", "Unable to place the call");
+    }
+  };
 
   const handleOpenMap = async (
     lat?: number,
@@ -270,197 +270,221 @@ const handleCallCustomer = async (phone?: string | null) => {
             {deliveries.filter((d) => d.status === "pending").length} New
             Requests
           </Text>
+          {hasNoDeliveries && (
+            <View
+              style={{
+                flex: 1,
+                height: 500,
+                width: "100%",
+                alignContent: "center",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Image
+                source={require("../../assets/images/OrderNodataFound.gif")}
+                style={{ height: 200, width: 200 }}
+              />
+              <Text
+                style={{
+                  fontWeight: "600",
+                }}
+              >
+                Sorry! No result found :(
+              </Text>
+            </View>
+          )}
+          {!hasNoDeliveries &&
+            deliveries.map((item) => (
+              <View key={item.id} style={styles.cardContainer}>
+                <View style={styles.cardMain}>
+                  <View style={styles.imageWrapper}>
+                    <Image
+                      source={{ uri: item.image }}
+                      style={styles.itemImage}
+                      resizeMode="cover"
+                    />
+                  </View>
 
-          {deliveries.map((item) => (
-            <View key={item.id} style={styles.cardContainer}>
-              <View style={styles.cardMain}>
-                <View style={styles.imageWrapper}>
-                  <Image
-                    source={{ uri: item.image }}
-                    style={styles.itemImage}
-                    resizeMode="cover"
-                  />
-                </View>
+                  <View style={styles.cardInfo}>
+                    <View style={styles.statusRow}>
+                      <Text style={styles.orderId}>{item.orderId}</Text>
 
-                <View style={styles.cardInfo}>
-                  <View style={styles.statusRow}>
-                    <Text style={styles.orderId}>{item.orderId}</Text>
-
-                    <View
-                      style={[
-                        styles.statusBadge,
-
-                        item.status === "pending" && styles.badgeNew,
-                        item.status === "accepted" && styles.badgeInProgress,
-                        item.status === "delivered" && styles.badgeDelivered,
-                        item.status === "cancelled" && styles.badgeCancelled,
-                      ]}
-                    >
-                      <Text
+                      <View
                         style={[
-                          styles.statusText,
+                          styles.statusBadge,
 
-                          item.status === "pending" && styles.textNew,
-                          item.status === "accepted" && styles.textInProgress,
-                          item.status === "delivered" && styles.textDelivered,
-                          item.status === "cancelled" && styles.textCancelled,
+                          item.status === "pending" && styles.badgeNew,
+                          item.status === "accepted" && styles.badgeInProgress,
+                          item.status === "delivered" && styles.badgeDelivered,
+                          item.status === "cancelled" && styles.badgeCancelled,
                         ]}
                       >
-                        {item.status === "pending"
-                          ? "NEW ORDER"
-                          : item.status === "accepted"
-                          ? "IN PROGRESS"
-                          : item.status === "delivered"
-                          ? "DELIVERED"
-                          : "CANCELLED"}
-                      </Text>
-                    </View>
-                  </View>
+                        <Text
+                          style={[
+                            styles.statusText,
 
-                  <Text style={styles.itemTitle} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-
-                  <View style={styles.metaRow}>
-                    <View style={styles.metaItem}>
-                      <Clock size={ms(12)} color="#6b7280" />
-                      <Text style={styles.metaText}>{item.distance}</Text>
+                            item.status === "pending" && styles.textNew,
+                            item.status === "accepted" && styles.textInProgress,
+                            item.status === "delivered" && styles.textDelivered,
+                            item.status === "cancelled" && styles.textCancelled,
+                          ]}
+                        >
+                          {item.status === "pending"
+                            ? "NEW ORDER"
+                            : item.status === "accepted"
+                            ? "IN PROGRESS"
+                            : item.status === "delivered"
+                            ? "DELIVERED"
+                            : "CANCELLED"}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.metaItem}>
-                      <Text style={styles.priceText}>{item.price}</Text>
+
+                    <Text style={styles.itemTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+
+                    <View style={styles.metaRow}>
+                      <View style={styles.metaItem}>
+                        <Clock size={ms(12)} color="#6b7280" />
+                        <Text style={styles.metaText}>{item.distance}</Text>
+                      </View>
+                      <View style={styles.metaItem}>
+                        <Text style={styles.priceText}>{item.price}</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
-              </View>
 
-              <View style={styles.separator} />
+                <View style={styles.separator} />
 
-              <View style={styles.actionArea}>
-                {/* PENDING */}
-                {item.status === "pending" && (
-                  <View style={styles.pendingContainer}>
-                    <View style={styles.locationPreview}>
-                      <MapPin size={ms(16)} color="#6b7280" />
-                      <Text
-                        style={styles.locationTextPreview}
-                        numberOfLines={1}
-                      >
-                        Pickup: {item.pickupLocation}
+                <View style={styles.actionArea}>
+                  {/* PENDING */}
+                  {item.status === "pending" && (
+                    <View style={styles.pendingContainer}>
+                      <View style={styles.locationPreview}>
+                        <MapPin size={ms(16)} color="#6b7280" />
+                        <Text
+                          style={styles.locationTextPreview}
+                          numberOfLines={1}
+                        >
+                          Pickup: {item.pickupLocation}
+                        </Text>
+                      </View>
+
+                      <View style={styles.actionButtons}>
+                        <TouchableOpacity
+                          style={styles.cancelButton}
+                          onPress={() => handleCancelOrder(item.id)}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={styles.cancelButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.acceptButton}
+                          onPress={() => handleAcceptOrder(item.id)}
+                          activeOpacity={0.85}
+                        >
+                          <LinearGradient
+                            colors={["#1f2937", "#374151"]}
+                            style={styles.acceptButtonGradient}
+                          >
+                            <Text style={styles.acceptButtonText}>Accept</Text>
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* ACCEPTED */}
+                  {item.status === "accepted" && (
+                    <View style={styles.activeContainer}>
+                      <View style={styles.addressBox}>
+                        <View style={styles.addressRow}>
+                          <View style={styles.dotStart} />
+                          <Text style={styles.addressLabel}>Pickup</Text>
+                          <Text style={styles.addressValue} numberOfLines={1}>
+                            {item.pickupLocation}
+                          </Text>
+                        </View>
+
+                        <View style={styles.verticalLine} />
+
+                        <View style={styles.addressRow}>
+                          <MapPin size={ms(14)} color="#ef4444" />
+                          <Text style={styles.addressLabel}>Drop</Text>
+                          <Text style={styles.addressValue} numberOfLines={1}>
+                            {item.dropLocation}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.buttonRow}>
+                        <TouchableOpacity
+                          style={styles.callButton}
+                          onPress={() => handleCallCustomer(item.customerPhone)}
+                        >
+                          <Phone size={ms(18)} color="#0e7490" />
+                          <Text style={styles.callButtonText}>Call</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.navigateButton}
+                          onPress={() =>
+                            handleOpenMap(
+                              item.dropLat,
+                              item.dropLng,
+                              "Drop Location"
+                            )
+                          }
+                        >
+                          <LinearGradient
+                            colors={["#0e7490", "#0891b2"]}
+                            style={styles.navigateButtonGradient}
+                          >
+                            <Navigation size={ms(18)} color="#fff" />
+                            <Text style={styles.navigateButtonText}>
+                              Navigate
+                            </Text>
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      </View>
+
+                      {item.otp && (
+                        <View style={styles.otpSection}>
+                          <Lock size={ms(20)} color="#059669" />
+                          <Text style={styles.otpLabel}>Customer OTP</Text>
+                          <Text style={styles.otpValue}>{item.otp}</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* CANCELLED */}
+                  {item.status === "cancelled" && (
+                    <View style={styles.cancelledContainer}>
+                      <Text style={styles.cancelledText}>
+                        This order has been cancelled
                       </Text>
                     </View>
-
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity
-                        style={styles.cancelButton}
-                        onPress={() => handleCancelOrder(item.id)}
-                        activeOpacity={0.85}
+                  )}
+                  {item.status === "delivered" && (
+                    <View style={styles.cancelledContainer}>
+                      <Text
+                        style={[
+                          styles.cancelledText,
+                          { color: "#059669" }, // success green
+                        ]}
                       >
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.acceptButton}
-                        onPress={() => handleAcceptOrder(item.id)}
-                        activeOpacity={0.85}
-                      >
-                        <LinearGradient
-                          colors={["#1f2937", "#374151"]}
-                          style={styles.acceptButtonGradient}
-                        >
-                          <Text style={styles.acceptButtonText}>Accept</Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
+                        Item is delivered successfully
+                      </Text>
                     </View>
-                  </View>
-                )}
-
-                {/* ACCEPTED */}
-                {item.status === "accepted" && (
-                  <View style={styles.activeContainer}>
-                    <View style={styles.addressBox}>
-                      <View style={styles.addressRow}>
-                        <View style={styles.dotStart} />
-                        <Text style={styles.addressLabel}>Pickup</Text>
-                        <Text style={styles.addressValue} numberOfLines={1}>
-                          {item.pickupLocation}
-                        </Text>
-                      </View>
-
-                      <View style={styles.verticalLine} />
-
-                      <View style={styles.addressRow}>
-                        <MapPin size={ms(14)} color="#ef4444" />
-                        <Text style={styles.addressLabel}>Drop</Text>
-                        <Text style={styles.addressValue} numberOfLines={1}>
-                          {item.dropLocation}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.buttonRow}>
-                      <TouchableOpacity
-                        style={styles.callButton}
-                        onPress={() => handleCallCustomer(item.customerPhone)}
-                      >
-                        <Phone size={ms(18)} color="#0e7490" />
-                        <Text style={styles.callButtonText}>Call</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.navigateButton}
-                        onPress={() =>
-                          handleOpenMap(
-                            item.dropLat,
-                            item.dropLng,
-                            "Drop Location"
-                          )
-                        }
-                      >
-                        <LinearGradient
-                          colors={["#0e7490", "#0891b2"]}
-                          style={styles.navigateButtonGradient}
-                        >
-                          <Navigation size={ms(18)} color="#fff" />
-                          <Text style={styles.navigateButtonText}>
-                            Navigate
-                          </Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </View>
-
-                    {item.otp && (
-                      <View style={styles.otpSection}>
-                        <Lock size={ms(20)} color="#059669" />
-                        <Text style={styles.otpLabel}>Customer OTP</Text>
-                        <Text style={styles.otpValue}>{item.otp}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* CANCELLED */}
-                {item.status === "cancelled" && (
-                  <View style={styles.cancelledContainer}>
-                    <Text style={styles.cancelledText}>
-                      This order has been cancelled
-                    </Text>
-                  </View>
-                )}
-                {item.status === "delivered" && (
-                  <View style={styles.cancelledContainer}>
-                    <Text
-                      style={[
-                        styles.cancelledText,
-                        { color: "#059669" }, // success green
-                      ]}
-                    >
-                      Item is delivered successfully
-                    </Text>
-                  </View>
-                )}
+                  )}
+                </View>
               </View>
-            </View>
-          ))}
+            ))}
 
           {/* Bottom padding with safe area */}
           <View style={{ height: vs(20) + insets.bottom }} />
