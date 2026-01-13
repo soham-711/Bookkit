@@ -35,11 +35,18 @@ type Book = {
   // optional fields if you added them
   category_id?: string | null;
   condition?: string | null;
+  distance_km?: number;
+};
+
+type BookWithDistance = {
+  book: Book;
+  distance_km: string;
 };
 
 type Props = {
-  books: Book[];
+  books: BookWithDistance[];
 };
+
 
 // Scaling utilities (defined once, outside component)
 const scale = (size: number, width: number) => (width / 375) * size;
@@ -60,6 +67,8 @@ const SuggestedBooksCart: React.FC<Props> = ({ books }) => {
   const ms = (size: number, factor?: number) =>
     moderateScale(size, factor, width);
 
+  
+
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -67,43 +76,44 @@ const SuggestedBooksCart: React.FC<Props> = ({ books }) => {
       </View>
 
       <View style={styles.suggestedGrid}>
-        {books.map((book, distance_km) => (
+        {books.map((book) => (
+          
           <TouchableOpacity
-            key={book.id}
+            key={book.book.id}
             style={styles.suggestedCard}
             onPress={() =>
               router.push({
                 pathname: "/(screen)/DiscloseScreen",
                 params: {
-                  bookId: book.id,
-                  distance: distance_km,
+                  bookId: book.book.id,
+                  distance: book.distance_km,
                 },
               })
             }
           >
             <View style={styles.suggestedImageWrapper}>
               <Image
-                source={{ uri: book.images?.[0] }}
+                source={{ uri: book.book.images?.[0] }}
                 style={styles.suggestedBookImage}
                 contentFit="cover"
               />
             </View>
 
             <Text style={styles.suggestedBookName} numberOfLines={1}>
-              {book.title}
+              {book.book.title}
             </Text>
 
             <Text style={styles.suggestedPriceText}>
-              Now at ₹{book.original_price}
+              Now at ₹{book.book.original_price}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <TouchableOpacity style={styles.refreshButton}>
+      {/* <TouchableOpacity style={styles.refreshButton}>
         <Ionicons name="refresh" size={s(20)} color="#003EF9" />
         <Text style={styles.refreshText}>Refresh</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 };

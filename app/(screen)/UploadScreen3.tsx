@@ -470,7 +470,7 @@ const UploadScreen3 = () => {
   );
 
   return (
-    <LinearGradient colors={["#70F3FA", "#FFFFFF"]} style={styles.container}>
+    <LinearGradient colors={["#ffffff", "#f2fbfbff"]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -493,9 +493,9 @@ const UploadScreen3 = () => {
               {/* ---------- FIXED BANNER ---------- */}
               <View style={styles.bannerWrapper}>
                 <Image
-                  source={require("../../assets/images/donate-book.png")}
+                  source={require("../../assets/images/donate-book3.png")}
                   style={[styles.bannerImage, { width: width - 32 }]}
-                  resizeMode="cover"
+                  resizeMode="stretch"
                 />
               </View>
 
@@ -1318,23 +1318,17 @@ const makeStyles = (width: number, height: number) => {
     bannerImage: {
       height: 160,
       borderRadius: 9,
-      borderWidth: 2,
-      borderColor: "#003EF9",
       elevation: 10,
     },
 
     /* Form Card - Same style as UploadScreen2 */
     formCard: {
-      backgroundColor: "#BDF4FF",
+      backgroundColor: "#a5f3fc99",
       marginHorizontal: 16,
       marginTop: 12,
       marginBottom: Platform.OS === "ios" ? 20 : 10,
       borderRadius: 14,
       padding: 16,
-      shadowColor: "#000",
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
     },
     sectionTitle: {
       fontSize: 15,

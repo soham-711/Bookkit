@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Keyboard,
@@ -272,7 +272,10 @@ const SearchScreen = () => {
               {showResults ? (
                 loading ? (
                   <View style={styles.loadingState}>
-                    <ActivityIndicator size="large" color="#003EF9" />
+                    <Image
+                      source={require("../../assets/images/loading.gif")}
+                      style={{ height: 50, width: 50 }}
+                    />
                     <Text style={styles.loadingText}>Searching...</Text>
                   </View>
                 ) : searchResults.length === 0 ? (
@@ -374,7 +377,7 @@ const SearchScreen = () => {
                 <TextInput
                   ref={inputRef}
                   style={styles.searchInput}
-                  placeholder="Search books, authors, subjects"
+                  placeholder="Search books, authors,..."
                   placeholderTextColor="#00000060"
                   value={searchQuery}
                   onChangeText={setSearchQuery}

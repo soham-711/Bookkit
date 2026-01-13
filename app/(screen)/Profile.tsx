@@ -331,7 +331,7 @@ const ProfileScreen = () => {
                 icon={<Clock color="#232323ff" size={scale(24, width)} />}
                 label="Sell History"
                 width={width}
-                onPress={() => router.push("/Components/CommingSoon")}
+                onPress={() => router.push("/(screen)/UploadHistory")}
               />
               <MenuItem
                 icon={<Info color="#232323ff" size={scale(24, width)} />}

@@ -601,18 +601,14 @@
 //   },
 // });
 
-
-
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-  FlatList,
   Image,
   Keyboard,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -628,13 +624,13 @@ import { useUpload } from "../../Context/UploadContext";
 
 const UploadScreen2 = () => {
   const { width } = useWindowDimensions();
-  const [isConditionModal, setConditionModal] = useState(false);
-  const [isWritingModal, setWritingModal] = useState(false);
-  const [isPagesModal, setPagesModal] = useState(false);
-  
-  const { state, dispatch } = useUpload(); // ✅ GLOBAL STATE
+  const { state, dispatch } = useUpload();
 
-  // Form validation - using state from context
+  const [openDropdown, setOpenDropdown] = useState<
+    "bookCondition" | "writingMarking" | "pagesMissing" | null
+  >(null);
+
+  // Form validation
   const isFormValid = useMemo(() => {
     return (
       state.bookCondition.trim() !== "" &&
@@ -646,7 +642,10 @@ const UploadScreen2 = () => {
     );
   }, [state]);
 
-  const handleInputChange = (field: keyof typeof state, value: string) => {
+  const handleInputChange = (
+    field: keyof typeof state,
+    value: string | number | null
+  ) => {
     dispatch({
       type: "SET_FIELD",
       field,
@@ -654,17 +653,16 @@ const UploadScreen2 = () => {
     });
   };
 
-  const handleSelectOption = (field: keyof typeof state, value: string) => {
+  const handleSelectOption = (
+    field: "bookCondition" | "writingMarking" | "pagesMissing",
+    value: string
+  ) => {
     dispatch({
       type: "SET_FIELD",
       field,
       value,
     });
-
-    // Close the modal
-    if (field === "bookCondition") setConditionModal(false);
-    if (field === "writingMarking") setWritingModal(false);
-    if (field === "pagesMissing") setPagesModal(false);
+    setOpenDropdown(null);
   };
 
   const handleNext = () => {
@@ -676,7 +674,6 @@ const UploadScreen2 = () => {
         pagesMissing: state.pagesMissing,
         originalPrice: state.originalPrice,
       });
-      // Navigate to next screen
       router.push("/(screen)/UploadScreen3");
     }
   };
@@ -693,7 +690,7 @@ const UploadScreen2 = () => {
     "Good",
     "Fair",
     "Poor",
-  ];
+  ] as const;
 
   const writingOptions = [
     "None",
@@ -701,7 +698,7 @@ const UploadScreen2 = () => {
     "Moderate (Some pages)",
     "Heavy (Most pages)",
     "Highlighted Text",
-  ];
+  ] as const;
 
   const pagesOptions = [
     "None - All pages intact",
@@ -709,73 +706,21 @@ const UploadScreen2 = () => {
     "Some pages torn",
     "Many pages missing",
     "Cover damaged",
-  ];
+  ] as const;
 
-  // Reusable Dropdown Component
-  const DropdownModal = ({ 
-    visible, 
-    onClose, 
-    data, 
-    field, 
-    title 
-  }: { 
-    visible: boolean; 
-    onClose: () => void; 
-    data: string[]; 
-    field: keyof typeof state; 
-    title: string; 
-  }) => (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { width: width * 0.9 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{title}</Text>
-              <TouchableOpacity onPress={onClose}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={data}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => handleSelectOption(field, item)}
-                >
-                  <Text style={styles.dropdownItemText}>{item}</Text>
-                  {state[field] === item && (
-                    <Ionicons name="checkmark" size={20} color="#003EF9" />
-                  )}
-                </TouchableOpacity>
-              )}
-              showsVerticalScrollIndicator={false}
-              style={styles.dropdownList}
-            />
-          </View>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
-  );
-
-  // Reusable Input Field Component
+  // Reusable Input Field
   const InputField = ({
     label,
     placeholder,
     value,
-    field,
+    onChange,
     multiline = false,
     keyboardType = "default",
   }: {
     label: string;
     placeholder: string;
     value: string;
-    field: keyof typeof state;
+    onChange: (text: string) => void;
     multiline?: boolean;
     keyboardType?: "default" | "numeric";
   }) => {
@@ -797,7 +742,7 @@ const UploadScreen2 = () => {
           placeholder={placeholder}
           placeholderTextColor="rgba(0,0,0,0.4)"
           value={value}
-          onChangeText={(text) => handleInputChange(field, text)}
+          onChangeText={onChange}
           multiline={multiline}
           numberOfLines={multiline ? 4 : 1}
           textAlignVertical={multiline ? "top" : "center"}
@@ -807,19 +752,22 @@ const UploadScreen2 = () => {
     );
   };
 
-  // Reusable Dropdown Field Component
-  const DropdownField = ({ 
-    label, 
-    placeholder, 
-    value, 
-    onPress 
-  }: { 
-    label: string; 
-    placeholder: string; 
-    value: string; 
-    onPress: () => void; 
+  // Inline Dropdown Field (same style as UploadScreen1)
+  const InlineDropdownField = ({
+    label,
+    placeholder,
+    value,
+    data,
+    field,
+  }: {
+    label: string;
+    placeholder: string;
+    value: string;
+    data: readonly string[];
+    field: "bookCondition" | "writingMarking" | "pagesMissing";
   }) => {
     const isFilled = value.length > 0;
+    const isOpen = openDropdown === field;
 
     return (
       <View style={styles.fieldContainer}>
@@ -828,23 +776,52 @@ const UploadScreen2 = () => {
         >
           <Text style={styles.floatingLabelText}>{label}</Text>
         </View>
+
         <TouchableOpacity
           style={[styles.dropdown, isFilled && styles.dropdownFilled]}
-          onPress={onPress}
+          onPress={() => setOpenDropdown(isOpen ? null : field)}
+          activeOpacity={0.7}
         >
           <Text
             style={[styles.dropdownText, isFilled && styles.dropdownTextFilled]}
           >
             {value || placeholder}
           </Text>
-          <Ionicons name="chevron-down" size={18} color="#444" />
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#444"
+          />
         </TouchableOpacity>
+
+        {isOpen && (
+          <View style={styles.inlineDropdownContainer}>
+            <ScrollView
+              style={styles.dropdownList}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+            >
+              {data.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={styles.dropdownItem}
+                  onPress={() => handleSelectOption(field, item)}
+                >
+                  <Text style={styles.dropdownItemText}>{item}</Text>
+                  {value === item && (
+                    <Ionicons name="checkmark" size={20} color="#003EF9" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </View>
     );
   };
 
   return (
-    <LinearGradient colors={["#70F3FA", "#FFFFFF"]} style={styles.container}>
+    <LinearGradient colors={["#ffffff", "#f2fbfbff"]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -853,45 +830,45 @@ const UploadScreen2 = () => {
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={{ flex: 1 }}>
-              {/* ---------- FIXED HEADER ---------- */}
+              {/* Header */}
               <View style={styles.header}>
                 <Ionicons
-                  name="arrow-back-outline"
+                  name="chevron-back"
                   size={24}
                   color="#131E1E"
                   onPress={handleBack}
                 />
-                <Text style={styles.headerTitle}>Shear Books</Text>
+                <Text style={styles.headerTitle}>Sell Books</Text>
               </View>
 
-              {/* ---------- FIXED BANNER ---------- */}
+              {/* Banner */}
               <View style={styles.bannerWrapper}>
                 <Image
-                  source={require("../../assets/images/donate-book.png")}
+                  source={require("../../assets/images/donate-book2.png")}
                   style={[styles.bannerImage, { width: width - 32 }]}
-                  resizeMode="cover"
+                  resizeMode="stretch"
                 />
               </View>
 
-              {/* ---------- SCROLLABLE FORM ---------- */}
+              {/* Form */}
               <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 style={styles.scrollView}
               >
-                {/* ---------- FORM CARD ---------- */}
                 <View style={styles.formCard}>
                   <Text style={styles.sectionTitle}>
                     B. Book Condition & Description
                   </Text>
 
                   {/* Book Condition */}
-                  <DropdownField
+                  <InlineDropdownField
                     label="Book Condition"
                     placeholder="Select Book Condition"
                     value={state.bookCondition}
-                    onPress={() => setConditionModal(true)}
+                    data={bookConditions}
+                    field="bookCondition"
                   />
 
                   {/* Condition Description */}
@@ -899,39 +876,45 @@ const UploadScreen2 = () => {
                     label="Book Description"
                     placeholder="About the Book Condition"
                     value={state.conditionDescription}
-                    field="conditionDescription"
+                    onChange={(text) =>
+                      handleInputChange("conditionDescription", text)
+                    }
                     multiline
                   />
 
                   {/* Writing/Marking */}
-                  <DropdownField
+                  <InlineDropdownField
                     label="Any Writing/Marking Inside?"
-                    placeholder="Select Any Writing/Marking Inside?"
+                    placeholder="Select Writing/Marking"
                     value={state.writingMarking}
-                    onPress={() => setWritingModal(true)}
+                    data={writingOptions}
+                    field="writingMarking"
                   />
 
                   {/* Pages Missing/Torn */}
-                  <DropdownField
+                  <InlineDropdownField
                     label="Any Pages Missing or Torn?"
-                    placeholder="Select Any Pages Missing or Torn?"
+                    placeholder="Select Pages Condition"
                     value={state.pagesMissing}
-                    onPress={() => setPagesModal(true)}
+                    data={pagesOptions}
+                    field="pagesMissing"
                   />
 
-                  {/* ---------- PRICE SECTION ---------- */}
+                  {/* Price Section */}
                   <View style={styles.priceSection}>
                     <Text style={styles.sectionTitle}>C. Price</Text>
 
-                    {/* Original Price */}
                     <View style={styles.fieldContainer}>
                       <View
                         style={[
-                          styles.floatingLabel, 
-                          state.originalPrice !== null && styles.floatingLabelFilled
+                          styles.floatingLabel,
+                          state.originalPrice !== null &&
+                            styles.floatingLabelFilled,
                         ]}
                       >
-                        <Text style={styles.floatingLabelText}>Original MRP Printed</Text>
+                        <Text style={styles.floatingLabelText}>
+                          Original MRP Printed
+                        </Text>
                       </View>
                       <TextInput
                         style={[
@@ -940,14 +923,14 @@ const UploadScreen2 = () => {
                         ]}
                         placeholder="Enter original MRP price"
                         placeholderTextColor="rgba(0,0,0,0.4)"
-                        value={state.originalPrice ? state.originalPrice.toString() : ""}
+                        value={
+                          state.originalPrice
+                            ? state.originalPrice.toString()
+                            : ""
+                        }
                         onChangeText={(text) => {
                           const numValue = text ? parseFloat(text) : null;
-                          dispatch({
-                            type: "SET_FIELD",
-                            field: "originalPrice",
-                            value: numValue,
-                          });
+                          handleInputChange("originalPrice", numValue);
                         }}
                         keyboardType="numeric"
                       />
@@ -963,7 +946,8 @@ const UploadScreen2 = () => {
                     </View>
                   </View>
                 </View>
-                {/* ---------- NEXT BUTTON ---------- */}
+
+                {/* Next Button */}
                 <TouchableOpacity
                   style={[
                     styles.nextButton,
@@ -984,31 +968,6 @@ const UploadScreen2 = () => {
               </ScrollView>
             </View>
           </TouchableWithoutFeedback>
-
-          {/* ---------- DROPDOWN MODALS ---------- */}
-          <DropdownModal
-            visible={isConditionModal}
-            onClose={() => setConditionModal(false)}
-            data={bookConditions}
-            field="bookCondition"
-            title="Select Book Condition"
-          />
-
-          <DropdownModal
-            visible={isWritingModal}
-            onClose={() => setWritingModal(false)}
-            data={writingOptions}
-            field="writingMarking"
-            title="Select Writing/Marking"
-          />
-
-          <DropdownModal
-            visible={isPagesModal}
-            onClose={() => setPagesModal(false)}
-            data={pagesOptions}
-            field="pagesMissing"
-            title="Select Pages Condition"
-          />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
@@ -1028,7 +987,6 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 20 : 10,
   },
 
-  /* Header */
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -1038,11 +996,10 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "400",
+    fontWeight: "700",
     marginLeft: 10,
   },
 
-  /* Banner */
   bannerWrapper: {
     alignItems: "center",
     marginVertical: 8,
@@ -1051,23 +1008,19 @@ const styles = StyleSheet.create({
   bannerImage: {
     height: 160,
     borderRadius: 9,
-    borderWidth: 2,
-    borderColor: "#003EF9",
+
     elevation: 10,
   },
 
-  /* Form Card */
   formCard: {
-    backgroundColor: "#BDF4FF",
+    backgroundColor: "#a5f3fc99",
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: Platform.OS === "ios" ? 20 : 10,
     borderRadius: 14,
     padding: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+   
+    
   },
   sectionTitle: {
     fontSize: 15,
@@ -1076,7 +1029,6 @@ const styles = StyleSheet.create({
     color: "#000000E0",
   },
 
-  /* Price Section */
   priceSection: {
     marginTop: 20,
     paddingTop: 20,
@@ -1084,13 +1036,11 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(0, 62, 249, 0.2)",
   },
 
-  /* Field Container */
   fieldContainer: {
     marginBottom: 16,
     position: "relative",
   },
 
-  /* Floating Label */
   floatingLabel: {
     position: "absolute",
     left: 12,
@@ -1111,7 +1061,6 @@ const styles = StyleSheet.create({
     color: "rgba(0,0,0,0.65)",
   },
 
-  /* Input Fields */
   input: {
     minHeight: 48,
     borderRadius: 10,
@@ -1133,7 +1082,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
 
-  /* Dropdown */
   dropdown: {
     minHeight: 48,
     borderRadius: 10,
@@ -1159,7 +1107,34 @@ const styles = StyleSheet.create({
     color: "#0B0B0B",
   },
 
-  /* Note Box */
+  inlineDropdownContainer: {
+    marginTop: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#44D6FF",
+    backgroundColor: "#fff",
+    maxHeight: 240,
+    overflow: "hidden",
+  },
+
+  dropdownList: {
+    maxHeight: 300,
+  },
+  dropdownItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: "#333",
+    flex: 1,
+  },
+
   noteBox: {
     backgroundColor: "rgba(207, 250, 254, 0.5)",
     borderWidth: 2,
@@ -1180,7 +1155,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  /* Next Button */
   nextButton: {
     backgroundColor: "rgba(20, 218, 232, 0.9)",
     marginHorizontal: 16,
@@ -1208,54 +1182,5 @@ const styles = StyleSheet.create({
   },
   nextTextDisabled: {
     color: "rgba(107, 114, 128, 0.7)",
-  },
-
-  /* Modal Styles */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    maxHeight: "60%",
-    overflow: "hidden",
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-  },
-  dropdownList: {
-    maxHeight: 300,
-  },
-  dropdownItem: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  dropdownItemText: {
-    fontSize: 16,
-    color: "#333",
-    flex: 1,
   },
 });

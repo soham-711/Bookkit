@@ -295,7 +295,7 @@ const { refreshOrders } = useOrders();
               />
             </View>
 
-            <TouchableOpacity style={styles.sellButton}>
+            <TouchableOpacity style={styles.sellButton} onPress={()=>router.push('/(screen)/UploadScreen1')}>
               <Image
                 source={require("../../assets/images/Sellbook.png")}
                 style={styles.sellIcon}
@@ -798,7 +798,7 @@ const { refreshOrders } = useOrders();
             </View>
 
             <View style={styles.divider} />
-            <Text style={styles.suggestedTitle}>suggested books</Text>
+            
 
             {/* <SuggestedBooksCart/> */}
           </ScrollView>

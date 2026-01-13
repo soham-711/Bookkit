@@ -1,4 +1,3 @@
-
 // import { Ionicons } from "@expo/vector-icons";
 // import { LinearGradient } from "expo-linear-gradient";
 // import { router } from "expo-router";
@@ -719,7 +718,6 @@
 //   },
 // });
 
-
 // import { Ionicons } from "@expo/vector-icons";
 // import { LinearGradient } from "expo-linear-gradient";
 // import { router } from "expo-router";
@@ -746,11 +744,11 @@
 // const UploadScreen1 = () => {
 //   const { width, height } = useWindowDimensions();
 //   const { state, dispatch } = useUpload(); // ✅ GLOBAL STATE
-  
+
 //   const [isCategoryModal, setCategoryModal] = useState(false);
 //   const [isClassModal, setClassModal] = useState(false);
 //   const [isSubjectModal, setSubjectModal] = useState(false);
-  
+
 //   // These "other" fields should be managed locally since they're not in the UploadState
 //   const [categoryOther, setCategoryOther] = useState("");
 //   const [classOther, setClassOther] = useState("");
@@ -883,18 +881,18 @@
 //   ];
 
 //   // Reusable Dropdown Component
-//   const DropdownModal = ({ 
-//     visible, 
-//     onClose, 
-//     data, 
-//     field, 
-//     title 
-//   }: { 
-//     visible: boolean; 
-//     onClose: () => void; 
-//     data: string[]; 
-//     field: keyof typeof state; 
-//     title: string; 
+//   const DropdownModal = ({
+//     visible,
+//     onClose,
+//     data,
+//     field,
+//     title
+//   }: {
+//     visible: boolean;
+//     onClose: () => void;
+//     data: string[];
+//     field: keyof typeof state;
+//     title: string;
 //   }) => (
 //     <Modal
 //       visible={visible}
@@ -976,16 +974,16 @@
 //   };
 
 //   // Reusable Dropdown Field Component
-//   const DropdownField = ({ 
-//     label, 
-//     placeholder, 
-//     value, 
-//     onPress 
-//   }: { 
-//     label: string; 
-//     placeholder: string; 
-//     value: string; 
-//     onPress: () => void; 
+//   const DropdownField = ({
+//     label,
+//     placeholder,
+//     value,
+//     onPress
+//   }: {
+//     label: string;
+//     placeholder: string;
+//     value: string;
+//     onPress: () => void;
 //   }) => {
 //     const isFilled = value.length > 0;
 
@@ -1477,11 +1475,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-  FlatList,
   Image,
   Keyboard,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -1497,23 +1493,24 @@ import { useUpload } from "../../Context/UploadContext";
 
 const UploadScreen1 = () => {
   const { width, height } = useWindowDimensions();
-  const { state, dispatch } = useUpload(); // ✅ GLOBAL STATE
-  
+  const { state, dispatch } = useUpload();
+
   const [isCategoryModal, setCategoryModal] = useState(false);
   const [isClassModal, setClassModal] = useState(false);
   const [isSubjectModal, setSubjectModal] = useState(false);
-  
-  // These "other" fields are managed locally until Next is pressed
+
   const [categoryOther, setCategoryOther] = useState("");
   const [classOther, setClassOther] = useState("");
   const [subjectOther, setSubjectOther] = useState("");
 
-  // Check if "Others" option is selected
+  const [openDropdown, setOpenDropdown] = useState<
+    "category" | "className" | "subject" | null
+  >(null);
+
   const showCategoryOther = state.category === "Others";
   const showClassOther = state.className === "Others";
   const showSubjectOther = state.subject === "Others";
 
-  // Form validation
   const isFormValid = useMemo(() => {
     return (
       state.bookTitle.trim() &&
@@ -1545,26 +1542,22 @@ const UploadScreen1 = () => {
     });
   };
 
-  const handleSelectOption = (field: keyof typeof state, value: string) => {
-    // Update the global state
+  const handleSelectOption = (
+    field: "category" | "className" | "subject",
+    value: string
+  ) => {
     dispatch({
       type: "SET_FIELD",
       field,
       value,
     });
 
-    // If selecting a non-"Others" option, clear the corresponding "Other" field
     if (value !== "Others") {
-      if (field === "category") {
-        setCategoryOther("");
-      } else if (field === "className") {
-        setClassOther("");
-      } else if (field === "subject") {
-        setSubjectOther("");
-      }
+      if (field === "category") setCategoryOther("");
+      if (field === "className") setClassOther("");
+      if (field === "subject") setSubjectOther("");
     }
 
-    // Close the modal
     if (field === "category") setCategoryModal(false);
     if (field === "className") setClassModal(false);
     if (field === "subject") setSubjectModal(false);
@@ -1572,25 +1565,24 @@ const UploadScreen1 = () => {
 
   const handleNext = () => {
     if (isFormValid) {
-      // Create a copy of current state
       const updatedState = { ...state };
-      
-      // If "Others" is selected with custom value, save the custom value to context
+
       if (showCategoryOther && categoryOther.trim()) {
         updatedState.category = categoryOther.trim();
       }
-      
       if (showClassOther && classOther.trim()) {
         updatedState.className = classOther.trim();
       }
-      
       if (showSubjectOther && subjectOther.trim()) {
         updatedState.subject = subjectOther.trim();
       }
-      
-      // Update all fields in context
+
       Object.entries(updatedState).forEach(([field, value]) => {
-        if (field !== 'images' && field !== 'generatedPrice' && field !== 'originalPrice') {
+        if (
+          field !== "images" &&
+          field !== "generatedPrice" &&
+          field !== "originalPrice"
+        ) {
           dispatch({
             type: "SET_FIELD",
             field: field as keyof typeof state,
@@ -1599,7 +1591,6 @@ const UploadScreen1 = () => {
         }
       });
 
-      // Prepare final data for backend
       const finalData = {
         bookTitle: updatedState.bookTitle,
         category: updatedState.category,
@@ -1609,16 +1600,14 @@ const UploadScreen1 = () => {
         publisherName: updatedState.publisherName,
         edition: updatedState.edition,
       };
-      
+
       console.log("Final Data for Backend:", finalData);
       console.log("UPLOAD CONTEXT STATE:", updatedState);
-      
-      // Navigate to next screen
-      router.push('/(screen)/UploadScreen2');
+
+      router.push("/(screen)/UploadScreen2");
     }
   };
 
-  // Dropdown options
   const categories = [
     "Academic",
     "Fiction",
@@ -1628,7 +1617,7 @@ const UploadScreen1 = () => {
     "Literature",
     "History",
     "Others",
-  ];
+  ] as const;
 
   const classes = [
     "Class 1",
@@ -1646,7 +1635,7 @@ const UploadScreen1 = () => {
     "Undergraduate",
     "Postgraduate",
     "Others",
-  ];
+  ] as const;
 
   const subjects = [
     "English",
@@ -1659,72 +1648,91 @@ const UploadScreen1 = () => {
     "Computer Science",
     "Economics",
     "Others",
-  ];
+  ] as const;
 
-  // Reusable Dropdown Component
-  const DropdownModal = ({ 
-    visible, 
-    onClose, 
-    data, 
-    field, 
-    title 
-  }: { 
-    visible: boolean; 
-    onClose: () => void; 
-    data: string[]; 
-    field: keyof typeof state; 
-    title: string; 
-  }) => (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { width: width * 0.9 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{title}</Text>
-              <TouchableOpacity onPress={onClose}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={data}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
+  type DropdownFieldType = "category" | "className" | "subject";
+
+  const InlineDropdownField = ({
+    label,
+    placeholder,
+    value,
+    data,
+    field,
+  }: {
+    label: string;
+    placeholder: string;
+    value: string;
+    data: readonly string[];
+    field: DropdownFieldType;
+  }) => {
+    const isFilled = value.length > 0;
+    const isOpen = openDropdown === field;
+
+    return (
+      <View style={styles.fieldContainer}>
+        <View
+          style={[styles.floatingLabel, isFilled && styles.floatingLabelFilled]}
+        >
+          <Text style={styles.floatingLabelText}>{label}</Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.dropdown, isFilled && styles.dropdownFilled]}
+          onPress={() => setOpenDropdown(isOpen ? null : field)}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[styles.dropdownText, isFilled && styles.dropdownTextFilled]}
+          >
+            {value || placeholder}
+          </Text>
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#444"
+          />
+        </TouchableOpacity>
+
+        {isOpen && (
+          <View style={styles.inlineDropdownContainer}>
+            <ScrollView
+              style={styles.dropdownList}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+            >
+              {data.map((item) => (
                 <TouchableOpacity
+                  key={item}
                   style={styles.dropdownItem}
-                  onPress={() => handleSelectOption(field, item)}
+                  onPress={() => {
+                    handleSelectOption(field, item);
+                    setOpenDropdown(null);
+                  }}
                 >
                   <Text style={styles.dropdownItemText}>{item}</Text>
-                  {state[field] === item && (
+                  {value === item && (
                     <Ionicons name="checkmark" size={20} color="#003EF9" />
                   )}
                 </TouchableOpacity>
-              )}
-              showsVerticalScrollIndicator={false}
-              style={styles.dropdownList}
-            />
+              ))}
+            </ScrollView>
           </View>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
-  );
+        )}
+      </View>
+    );
+  };
 
-  // Reusable Input Field Component
   const InputField = ({
     label,
     placeholder,
     value,
-    field,
+    onChange,
     multiline = false,
   }: {
     label: string;
     placeholder: string;
     value: string;
-    field: keyof typeof state;
+    onChange: (text: string) => void;
     multiline?: boolean;
   }) => {
     const isFilled = value.trim().length > 0;
@@ -1743,9 +1751,9 @@ const UploadScreen1 = () => {
             multiline && styles.inputMultiline,
           ]}
           placeholder={placeholder}
-          placeholderTextColor="rgba(0,0,0,0.4)"
+          placeholderTextColor="#00000066"
           value={value}
-          onChangeText={(text) => handleInputChange(field, text)}
+          onChangeText={onChange}
           multiline={multiline}
           numberOfLines={multiline ? 4 : 1}
           textAlignVertical={multiline ? "top" : "center"}
@@ -1754,44 +1762,12 @@ const UploadScreen1 = () => {
     );
   };
 
-  // Reusable Dropdown Field Component
-  const DropdownField = ({ 
-    label, 
-    placeholder, 
-    value, 
-    onPress 
-  }: { 
-    label: string; 
-    placeholder: string; 
-    value: string; 
-    onPress: () => void; 
-  }) => {
-    const isFilled = value.length > 0;
-
-    return (
-      <View style={styles.fieldContainer}>
-        <View
-          style={[styles.floatingLabel, isFilled && styles.floatingLabelFilled]}
-        >
-          <Text style={styles.floatingLabelText}>{label}</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.dropdown, isFilled && styles.dropdownFilled]}
-          onPress={onPress}
-        >
-          <Text
-            style={[styles.dropdownText, isFilled && styles.dropdownTextFilled]}
-          >
-            {value || placeholder}
-          </Text>
-          <Ionicons name="chevron-down" size={18} color="#444" />
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
   return (
-    <LinearGradient colors={["#70F3FA", "#FFFFFF"]} style={styles.container}>
+    <LinearGradient
+      colors={["#ffffff", "#f2fbfbff"]}
+      
+      style={styles.container}
+    >
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -1800,142 +1776,120 @@ const UploadScreen1 = () => {
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={{ flex: 1 }}>
-              {/* ---------- FIXED HEADER ---------- */}
               <View style={styles.header}>
                 <Ionicons
-                  name="arrow-back-outline"
+                  name="chevron-back"
                   size={24}
-                  color="#131E1E"
+                  color="#1f2937"
                   onPress={() => router.back()}
                 />
-                <Text style={styles.headerTitle}>Shear Books</Text>
+                <Text style={styles.headerTitle}>Sell Books</Text>
               </View>
 
-              {/* ---------- FIXED BANNER ---------- */}
               <View style={styles.bannerWrapper}>
                 <Image
                   source={require("../../assets/images/donate-book.png")}
                   style={[styles.bannerImage, { width: width - 32 }]}
-                  resizeMode="cover"
+                  resizeMode="stretch"
                 />
               </View>
 
-              {/* ---------- SCROLLABLE FORM ---------- */}
               <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
-                {/* ---------- FORM CARD ---------- */}
                 <View style={[styles.formCard, { minHeight: height * 0.6 }]}>
                   <Text style={styles.sectionTitle}>A. Basic Details</Text>
 
-                  {/* Book Title */}
                   <InputField
                     label="Book Title"
                     placeholder="Book Name and Full Description"
                     value={state.bookTitle}
-                    field="bookTitle"
+                    onChange={(text) => handleInputChange("bookTitle", text)}
                   />
 
-                  {/* Category */}
-                  <DropdownField
+                  <InlineDropdownField
                     label="Category"
                     placeholder="Select Book Category"
                     value={state.category}
-                    onPress={() => setCategoryModal(true)}
+                    data={categories}
+                    field="category"
                   />
 
-                  {/* Category Other Field - Only shows when "Others" is selected */}
                   {showCategoryOther && (
-                    <View style={styles.fieldContainer}>
-                      <View style={[styles.floatingLabel, categoryOther.trim() && styles.floatingLabelFilled]}>
-                        <Text style={styles.floatingLabelText}>Specify Category</Text>
-                      </View>
-                      <TextInput
-                        style={[styles.input, categoryOther.trim() && styles.inputFilled]}
+                    <View style={styles.otherInputContainer}>
+                      <InputField
+                        label="Specify Category"
                         placeholder="Enter custom category"
-                        placeholderTextColor="rgba(0,0,0,0.4)"
                         value={categoryOther}
-                        onChangeText={setCategoryOther}
+                        onChange={setCategoryOther}
                       />
                     </View>
                   )}
 
-                  {/* Class */}
-                  <DropdownField
+                  <InlineDropdownField
                     label="Class"
                     placeholder="Select Book Class"
                     value={state.className}
-                    onPress={() => setClassModal(true)}
+                    data={classes}
+                    field="className"
                   />
 
-                  {/* Class Other Field - Only shows when "Others" is selected */}
                   {showClassOther && (
-                    <View style={styles.fieldContainer}>
-                      <View style={[styles.floatingLabel, classOther.trim() && styles.floatingLabelFilled]}>
-                        <Text style={styles.floatingLabelText}>Specify Class</Text>
-                      </View>
-                      <TextInput
-                        style={[styles.input, classOther.trim() && styles.inputFilled]}
+                    <View style={styles.otherInputContainer}>
+                      <InputField
+                        label="Specify Class"
                         placeholder="Enter custom class"
-                        placeholderTextColor="rgba(0,0,0,0.4)"
                         value={classOther}
-                        onChangeText={setClassOther}
+                        onChange={setClassOther}
                       />
                     </View>
                   )}
 
-                  {/* Subject */}
-                  <DropdownField
+                  <InlineDropdownField
                     label="Subject"
                     placeholder="Select Subject"
                     value={state.subject}
-                    onPress={() => setSubjectModal(true)}
+                    data={subjects}
+                    field="subject"
                   />
 
-                  {/* Subject Other Field - Only shows when "Others" is selected */}
                   {showSubjectOther && (
-                    <View style={styles.fieldContainer}>
-                      <View style={[styles.floatingLabel, subjectOther.trim() && styles.floatingLabelFilled]}>
-                        <Text style={styles.floatingLabelText}>Specify Subject</Text>
-                      </View>
-                      <TextInput
-                        style={[styles.input, subjectOther.trim() && styles.inputFilled]}
+                    <View style={styles.otherInputContainer}>
+                      <InputField
+                        label="Specify Subject"
                         placeholder="Enter custom subject"
-                        placeholderTextColor="rgba(0,0,0,0.4)"
                         value={subjectOther}
-                        onChangeText={setSubjectOther}
+                        onChange={setSubjectOther}
                       />
                     </View>
                   )}
 
-                  {/* Author */}
                   <InputField
                     label="Author Name"
                     placeholder="Author Name"
                     value={state.authorName}
-                    field="authorName"
+                    onChange={(text) => handleInputChange("authorName", text)}
                   />
 
-                  {/* Publisher */}
                   <InputField
                     label="Publisher Name"
                     placeholder="Publisher Name"
                     value={state.publisherName}
-                    field="publisherName"
+                    onChange={(text) =>
+                      handleInputChange("publisherName", text)
+                    }
                   />
 
-                  {/* Edition */}
                   <InputField
                     label="Edition"
                     placeholder="Edition (e.g., 2021, 3rd Edition)"
                     value={state.edition}
-                    field="edition"
+                    onChange={(text) => handleInputChange("edition", text)}
                   />
 
-                  {/* Note */}
                   <View style={styles.noteBox}>
                     <Text style={styles.noteText}>
                       <Text style={styles.noteBold}>Note:</Text> If your
@@ -1949,7 +1903,6 @@ const UploadScreen1 = () => {
                   </View>
                 </View>
 
-                {/* ---------- NEXT BUTTON ---------- */}
                 <TouchableOpacity
                   style={[
                     styles.nextButton,
@@ -1967,35 +1920,14 @@ const UploadScreen1 = () => {
                     Next
                   </Text>
                 </TouchableOpacity>
+
                 <View style={styles.buttonSpacer} />
               </ScrollView>
             </View>
           </TouchableWithoutFeedback>
 
-          {/* ---------- DROPDOWN MODALS ---------- */}
-          <DropdownModal
-            visible={isCategoryModal}
-            onClose={() => setCategoryModal(false)}
-            data={categories}
-            field="category"
-            title="Select Category"
-          />
-
-          <DropdownModal
-            visible={isClassModal}
-            onClose={() => setClassModal(false)}
-            data={classes}
-            field="className"
-            title="Select Class"
-          />
-
-          <DropdownModal
-            visible={isSubjectModal}
-            onClose={() => setSubjectModal(false)}
-            data={subjects}
-            field="subject"
-            title="Select Subject"
-          />
+          {/* Modals - kept for completeness but not used in this version */}
+          {/* You can remove them if you're not using modal dropdowns anymore */}
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
@@ -2013,76 +1945,65 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: 40,
   },
 
-  /* Header */
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "transparent",
-  },
-  buttonSpacer: {
-    height: 60,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "400",
+    fontWeight: "800",
     marginLeft: 10,
+    color: "#000",
   },
 
-  /* Banner */
   bannerWrapper: {
     alignItems: "center",
     marginVertical: 8,
-    backgroundColor: "transparent",
   },
   bannerImage: {
     height: 160,
     borderRadius: 9,
-    maxHeight: 200,
-    borderWidth: 2,
-    borderColor: "#003EF9",
+
     elevation: 10,
   },
 
-  /* Form Card */
   formCard: {
-    backgroundColor: "#BDF4FF",
+    backgroundColor: "#a5f3fc99",
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 20,
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: "#3DB9D4",
+    borderRadius: 15,
     padding: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "700",
     marginBottom: 20,
-    color: "#000000E0",
+    color: "#1f2937",
   },
 
-  /* Field Container */
   fieldContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
     position: "relative",
   },
 
-  /* Floating Label */
+  otherInputContainer: {
+    marginTop: -4,
+    marginBottom: 16,
+  },
+
   floatingLabel: {
     position: "absolute",
     left: 15,
     top: -8,
     paddingHorizontal: 6,
-    backgroundColor: "#D8D8D8",
-    borderRadius: 5,
+    backgroundColor: "#ffffff",
+    borderRadius: 6,
     zIndex: 2,
     borderWidth: 1,
     borderColor: "#44D6FF",
@@ -2093,16 +2014,15 @@ const styles = StyleSheet.create({
   floatingLabelText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "rgba(0,0,0,0.65)",
+    color: "#000000a6",
   },
 
-  /* Input Fields */
   input: {
     minHeight: 48,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#44D6FF",
-    backgroundColor: "rgba(255, 255, 255, 0.36)",
+    backgroundColor: "#ffffff5c",
     paddingHorizontal: 14,
     fontSize: 14,
     color: "#0B0B0B",
@@ -2118,7 +2038,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
 
-  /* Dropdown */
   dropdown: {
     minHeight: 48,
     borderRadius: 10,
@@ -2129,8 +2048,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 14,
-    paddingBottom: 14,
   },
   dropdownFilled: {
     borderColor: "#003EF9B0",
@@ -2144,64 +2061,16 @@ const styles = StyleSheet.create({
     color: "#0B0B0B",
   },
 
-  /* Note Box */
-  noteBox: {
-    backgroundColor: "rgba(207, 250, 254, 0.5)",
-    borderWidth: 2,
-    borderColor: "#44D6FF",
+  inlineDropdownContainer: {
+    marginTop: 4,
     borderRadius: 10,
-    borderStyle: "dashed",
-    padding: 12,
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  noteText: {
-    fontSize: 11,
-    color: "#4b5563",
-    lineHeight: 16,
-    marginBottom: 4,
-  },
-  noteBold: {
-    fontWeight: "700",
-  },
-  noteExample: {
-    fontSize: 10,
-    color: "#666",
-    fontStyle: "italic",
-    lineHeight: 14,
+    borderWidth: 1,
+    borderColor: "#44D6FF",
+    backgroundColor: "#fff",
+    maxHeight: 240,
+    overflow: "hidden",
   },
 
-  /* Modal Styles */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    maxHeight: "60%",
-    overflow: "hidden",
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-  },
   dropdownList: {
     maxHeight: 300,
   },
@@ -2220,33 +2089,52 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  /* Next Button */
+  noteBox: {
+    backgroundColor: "#cffafe80",
+    borderWidth: 2,
+    borderColor: "#44D6FF",
+    borderRadius: 10,
+    borderStyle: "dashed",
+    padding: 12,
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  noteText: {
+    fontSize: 11,
+    color: "#4b5563",
+    lineHeight: 16,
+    marginBottom: 6,
+  },
+  noteBold: {
+    fontWeight: "700",
+  },
+  noteExample: {
+    fontSize: 10,
+    color: "#666",
+    fontStyle: "italic",
+  },
+
   nextButton: {
     backgroundColor: "rgba(20, 218, 232, 0.9)",
     marginHorizontal: 16,
-    marginTop: 10,
+    marginTop: 8,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.08)",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
   },
   nextButtonDisabled: {
     backgroundColor: "rgba(156, 163, 175, 0.5)",
-    elevation: 0,
-    shadowOpacity: 0,
   },
   nextText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "rgba(255,255,255,0.78)",
+    color: "#fff",
   },
   nextTextDisabled: {
-    color: "rgba(107, 114, 128, 0.7)",
+    color: "rgba(255,255,255,0.6)",
+  },
+
+  buttonSpacer: {
+    height: 60,
   },
 });

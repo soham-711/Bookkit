@@ -98,7 +98,7 @@ import * as NavigationBar from "expo-navigation-bar";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, StyleSheet } from "react-native";
+import { Animated, StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { DashboardProvider } from "../Context/DashboardContext";
@@ -113,9 +113,9 @@ import {
 } from "../Services/locationService";
 
 import { OrdersProvider } from "@/Context/OrdersContext";
-import { supabase } from "../Utils/supabase";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { UploadHistoryProvider } from "@/Context/UploadHistoryContext";
 import { Image } from "expo-image";
+import { supabase } from "../Utils/supabase";
 
 /* ---------- LOCATION BOOTSTRAPPER ---------- */
 function LocationBootstrapper() {
@@ -187,10 +187,6 @@ export default function RootLayout() {
     run();
   }, []);
 
-
-
-
-
   /* ===== SMOOTH FADE OUT ===== */
   const finishLoading = () => {
     Animated.timing(fadeAnim, {
@@ -199,8 +195,6 @@ export default function RootLayout() {
       useNativeDriver: true,
     }).start(() => setLoading(false));
   };
-
-
 
   return (
     <SafeAreaProvider>
@@ -211,13 +205,15 @@ export default function RootLayout() {
         <LocationProvider>
           <DashboardProvider>
             <OrdersProvider>
-              <UploadProvider>
-                {/* LOCATION INIT (runs once) */}
-                <LocationBootstrapper />
+              <UploadHistoryProvider>
+                <UploadProvider>
+                  {/* LOCATION INIT (runs once) */}
+                  <LocationBootstrapper />
 
-                {/* NAVIGATION */}
-                <Stack screenOptions={{ headerShown: false }} />
-              </UploadProvider>
+                  {/* NAVIGATION */}
+                  <Stack screenOptions={{ headerShown: false }} />
+                </UploadProvider>
+              </UploadHistoryProvider>
             </OrdersProvider>
           </DashboardProvider>
         </LocationProvider>
@@ -226,11 +222,10 @@ export default function RootLayout() {
       {/* ===== LOADING OVERLAY ===== */}
       {loading && (
         <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-                <Image
-                  source={require("../assets/images/loading.gif")}
-                  style={{height:50,width:50,}}
-                 
-                />
+          <Image
+            source={require("../assets/images/loading.gif")}
+            style={{ height: 50, width: 50 }}
+          />
         </Animated.View>
       )}
     </SafeAreaProvider>

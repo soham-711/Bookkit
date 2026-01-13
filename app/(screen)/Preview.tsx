@@ -1776,6 +1776,7 @@ import { useUpload } from "../../Context/UploadContext"; // Update this path
 import { generateBookPrice } from "../../Services/generateBookPrice";
 import { uploadBookImages } from "../../Services/uploadImages";
 import { supabase } from "../../Utils/supabase";
+import { useUploadHistory } from "../../Context/UploadHistoryContext"; // ✅ import the hook
 
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
@@ -1807,6 +1808,7 @@ const Preview: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [estimatedPrice, setEstimatedPrice] = useState("");
   const [showPricePreviewModal, setShowPricePreviewModal] = useState(false);
+  const { refetchUploads } = useUploadHistory();
   // Initialize custom values when component mounts
   useEffect(() => {
     // Extract custom values from context if they contain "Others" logic
@@ -2418,6 +2420,8 @@ const Preview: React.FC = () => {
       if (error) throw new Error("DB_INSERT_FAILED");
 
       // 4️⃣ Success
+
+      await refetchUploads();
       /* 4️⃣ FULL SUCCESS — CLEAN EVERYTHING ✅ */
       setUploadSessionData(null);
       dispatch({ type: "RESET_UPLOAD" });
@@ -2487,7 +2491,7 @@ const Preview: React.FC = () => {
   const keyboardVerticalOffset = Platform.OS === "ios" ? 90 : 0;
 
   return (
-    <LinearGradient colors={["#70F3FA", "#FFFFFF"]} style={styles.container}>
+    <LinearGradient colors={["#ffffff", "#f2fbfbff"]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
         <View style={styles.fixedHeader}>
           <TouchableOpacity style={styles.backButton}>
@@ -2922,7 +2926,7 @@ const Preview: React.FC = () => {
             <View style={styles.successCard}>
               <View style={styles.successContent}>
                 <Text style={styles.successMessage}>
-                  ✅ Upload Successful!{"\n"}
+                  Upload Successful!{"\n"}
                   Your book is listed at{" "}
                   <Text style={styles.priceHighlight}>₹{estimatedPrice}</Text>
                 </Text>
@@ -2935,7 +2939,7 @@ const Preview: React.FC = () => {
                   style={styles.viewListingsButton}
                   onPress={() => {
                     setShowSuccessModal(false);
-                    router.push("/(screen)/Dashboard"); // Redirect to dashboard
+                    router.push("/(screen)/UploadHistory"); // Redirect to dashboard
                   }}
                   activeOpacity={0.7}
                 >
@@ -3182,18 +3186,13 @@ const makeStyles = (width: number, height: number) => {
 
     // Form Card - Reduced side padding to match UploadScreen
     formCard: {
-      backgroundColor: "#BDF4FF",
+      backgroundColor: "#a5f3fc99",
       marginHorizontal: 12, // Reduced from 16
       marginTop: 8, // Reduced
       marginBottom: 16, // Reduced
       borderRadius: 9,
-      borderWidth: 1,
-      borderColor: "#3DB9D4",
       padding: 16,
-      shadowColor: "#000",
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
+
     },
 
     sectionHeader: {
@@ -3232,7 +3231,7 @@ const makeStyles = (width: number, height: number) => {
       left: 15,
       top: -8,
       paddingHorizontal: 6,
-      backgroundColor: "#D8D8D8",
+      backgroundColor: "#ffffff",
       borderRadius: 5,
       zIndex: 2,
       borderWidth: 1,
@@ -3647,7 +3646,7 @@ const makeStyles = (width: number, height: number) => {
     // Modal styles
     modalOverlay: {
       flex: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      backgroundColor: "#00000080",
       alignItems: "center",
       justifyContent: "center",
       padding: 20,
@@ -3677,7 +3676,7 @@ const makeStyles = (width: number, height: number) => {
       height: 120,
     },
     successCard: {
-      backgroundColor: "rgba(165, 243, 252, 1)",
+      backgroundColor: "rgb(228, 250, 255)",
       borderRadius: 16,
       width: "90%",
       maxWidth: 400,
@@ -3736,11 +3735,11 @@ const makeStyles = (width: number, height: number) => {
     findBuyerButtonText: {
       fontSize: 16,
       fontWeight: "700",
-      color: "#003EF9",
+      color: "#0078f9",
     },
     // Price Preview Modal Styles
     previewCard: {
-      backgroundColor: "rgba(255, 250, 230, 1)",
+      backgroundColor: "rgb(255, 244, 230)",
       borderRadius: 16,
       width: "90%",
       maxWidth: 400,
@@ -3751,7 +3750,7 @@ const makeStyles = (width: number, height: number) => {
       shadowOpacity: 0.3,
       shadowRadius: 12,
       borderWidth: 2,
-      borderColor: "#FBBF24",
+      borderColor: "#b1f6ff",
     },
 
     previewSubtext: {
@@ -3781,13 +3780,13 @@ const makeStyles = (width: number, height: number) => {
       paddingVertical: 16,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#3B82F6",
+      
     },
 
     viewListingsButtonText: {
       fontSize: 16,
       fontWeight: "700",
-      color: "#FFFFFF",
+      color: "#0078f9",
     },
   });
 };
